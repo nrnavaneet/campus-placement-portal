@@ -1,0 +1,424 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Navbar } from "@/components/layout/navbar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { useTheme } from "@/contexts/theme-context"
+import { supabaseClient } from "@/lib/supabase"
+import {
+  SettingsIcon,
+  Bell,
+  Shield,
+  Moon,
+  Sun,
+  Download,
+  Trash2,
+  AlertCircle,
+  CheckCircle,
+  User,
+  Lock,
+} from "lucide-react"
+
+export default function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [settings, setSettings] = useState({
+    emailNotifications: true,
+    smsNotifications: false,
+    applicationUpdates: true,
+    marketingEmails: false,
+    deadlineReminders: true,
+    weeklyDigest: true,
+  })
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const { theme, setTheme } = useTheme()
+  const router = useRouter()
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = () => {
+    // Load settings from localStorage for demo
+    const savedSettings = localStorage.getItem("user_settings")
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings))
+    }
+  }
+
+  const handleSettingChange = (key: string, value: boolean) => {
+    const newSettings = { ...settings, [key]: value }
+    setSettings(newSettings)
+    localStorage.setItem("user_settings", JSON.stringify(newSettings))
+  }
+
+  const handlePasswordChange = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setError("Please fill in all password fields")
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError("New passwords do not match")
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setError("New password must be at least 6 characters long")
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      // For demo purposes, just show success
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setSuccess("Password updated successfully!")
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error: any) {
+      setError(error.message || "Failed to update password")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleExportData = async () => {
+    setIsLoading(true)
+    try {
+      // Mock data export
+      const studentProfile = localStorage.getItem("student_profile")
+      const userData = {
+        profile: studentProfile ? JSON.parse(studentProfile) : null,
+        settings: settings,
+        exportDate: new Date().toISOString(),
+      }
+
+      const dataStr = JSON.stringify(userData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: "application/json" })
+      const url = URL.createObjectURL(dataBlob)
+
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "my-placement-data.json"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      setSuccess("Data exported successfully!")
+    } catch (error) {
+      setError("Failed to export data")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.")
+
+    if (!confirmed) return
+
+    setIsLoading(true)
+    try {
+      // For demo purposes, just clear data and redirect
+      localStorage.clear()
+      await supabaseClient.auth.signOut()
+      router.push("/")
+    } catch (error) {
+      setError("Failed to delete account")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            Settings
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">Manage your account preferences and privacy settings</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Settings Navigation */}
+          <div className="lg:col-span-1">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SettingsIcon className="w-5 h-5" />
+                  Settings Menu
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button variant="ghost" className="w-full justify-start">
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  <Lock className="w-4 h-4 mr-2" />
+                  Security
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  <User className="w-4 h-4 mr-2" />
+                  Privacy
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  {theme === "light" ? <Moon className="w-4 h-4 mr-2" /> : <Sun className="w-4 h-4 mr-2" />}
+                  Appearance
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Settings Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Notifications */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="w-5 h-5" />
+                  Notification Preferences
+                </CardTitle>
+                <CardDescription>Choose how you want to be notified about updates</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Email Notifications</Label>
+                    <p className="text-sm text-gray-500">Receive notifications via email</p>
+                  </div>
+                  <Switch
+                    checked={settings.emailNotifications}
+                    onCheckedChange={(checked) => handleSettingChange("emailNotifications", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">SMS Notifications</Label>
+                    <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                  </div>
+                  <Switch
+                    checked={settings.smsNotifications}
+                    onCheckedChange={(checked) => handleSettingChange("smsNotifications", checked)}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Application Updates</Label>
+                    <p className="text-sm text-gray-500">Get notified about application status changes</p>
+                  </div>
+                  <Switch
+                    checked={settings.applicationUpdates}
+                    onCheckedChange={(checked) => handleSettingChange("applicationUpdates", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Deadline Reminders</Label>
+                    <p className="text-sm text-gray-500">Remind me about upcoming application deadlines</p>
+                  </div>
+                  <Switch
+                    checked={settings.deadlineReminders}
+                    onCheckedChange={(checked) => handleSettingChange("deadlineReminders", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Weekly Digest</Label>
+                    <p className="text-sm text-gray-500">Receive weekly summary of new opportunities</p>
+                  </div>
+                  <Switch
+                    checked={settings.weeklyDigest}
+                    onCheckedChange={(checked) => handleSettingChange("weeklyDigest", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Marketing Emails</Label>
+                    <p className="text-sm text-gray-500">Receive promotional emails and updates</p>
+                  </div>
+                  <Switch
+                    checked={settings.marketingEmails}
+                    onCheckedChange={(checked) => handleSettingChange("marketingEmails", checked)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Security Settings
+                </CardTitle>
+                <CardDescription>Manage your account security and password</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="Enter current password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handlePasswordChange}
+                    disabled={isLoading}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    {isLoading ? "Updating..." : "Update Password"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Appearance */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {theme === "light" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  Appearance
+                </CardTitle>
+                <CardDescription>Customize the look and feel of the application</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Dark Mode</Label>
+                    <p className="text-sm text-gray-500">Switch between light and dark themes</p>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Data & Privacy */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Data & Privacy
+                </CardTitle>
+                <CardDescription>Manage your personal data and privacy settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base">Export My Data</Label>
+                      <p className="text-sm text-gray-500">Download a copy of your personal data</p>
+                    </div>
+                    <Button variant="outline" onClick={handleExportData} disabled={isLoading}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <div className="space-y-0.5">
+                      <Label className="text-base text-red-600">Danger Zone</Label>
+                      <p className="text-sm text-gray-500">Irreversible and destructive actions</p>
+                    </div>
+
+                    <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-red-800 dark:text-red-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Delete Account</p>
+                            <p className="text-sm">Permanently delete your account and all associated data</p>
+                          </div>
+                          <Button variant="destructive" size="sm" onClick={handleDeleteAccount} disabled={isLoading}>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Messages */}
+            {error && (
+              <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
