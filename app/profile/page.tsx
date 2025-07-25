@@ -17,17 +17,18 @@ import { Badge } from "@/components/ui/badge"
 import { supabaseClient, type StudentDetails } from "@/lib/supabase"
 import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download } from "lucide-react"
 
-const branches = [
-  "Computer Science",
-  "Information Technology",
-  "Electronics and Communication",
-  "Electrical and Electronics",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Aerospace Engineering",
-  "Biotechnology",
-  "Chemical Engineering",
-]
+  const branches = [
+    "Computer Science",
+    "Information Technology",
+    "Artificial Intelligence & Machine Learning",
+    "Mathematics & Computing",
+    "Electronics and Communication",
+    "Electrical and Electronics",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Aerospace Engineering",
+    "Robotics",
+  ]
 
 export default function ProfilePage() {
   const [student, setStudent] = useState<StudentDetails | null>(null)

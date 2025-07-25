@@ -89,13 +89,14 @@ export default function AdminDashboard() {
   const branches = [
     "Computer Science",
     "Information Technology",
+    "Artificial Intelligence & Machine Learning",
+    "Mathematics & Computing",
     "Electronics and Communication",
     "Electrical and Electronics",
     "Mechanical Engineering",
     "Civil Engineering",
     "Aerospace Engineering",
-    "Biotechnology",
-    "Chemical Engineering",
+    "Robotics",
   ]
 
   useEffect(() => {

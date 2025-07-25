@@ -4,13 +4,8 @@ const RESUME_BUCKET = "placements"
 const MAX_RESUME_SIZE = 2 * 1024 * 1024 // 2MB
 
 // Use environment variables or fallback to placeholder
-const supabaseProjectId = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://your-project-id.supabase.co"
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-// Construct URL from project ID
-const supabaseUrl = supabaseProjectId
-  ? `https://${supabaseProjectId}.supabase.co`
-  : "https://your-project-id.supabase.co"
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey || "your-anon-key", {
   auth: {
@@ -22,9 +17,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey || "your-anon-
 
 // Check if we're in a development environment without proper Supabase setup
 const isDemoMode =
-  !supabaseProjectId ||
+  !supabaseUrl ||
   !supabaseAnonKey ||
-  supabaseProjectId === "your-project-id" ||
+  supabaseUrl === "https://your-project-id.supabase.co" ||
   supabaseAnonKey === "your-anon-key"
 
 if (isDemoMode && typeof window !== "undefined") {
