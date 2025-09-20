@@ -27,6 +27,49 @@ async function addActivity(title: string, type: string, description: string = ''
   }
 }
 
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const jobId = params.id
+
+    if (!jobId) {
+      return NextResponse.json(
+        { error: 'Job ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Fetch job using service role key
+    const { data, error } = await supabaseAdmin
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single()
+
+    if (error) {
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ data })
+  } catch (err) {
+    console.error('API error:', err)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const jobId = params.id

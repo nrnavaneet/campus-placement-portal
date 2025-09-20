@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get('student_id')
     const email = searchParams.get('email')
 
+    console.log(`Fetching student profile - ID: ${studentId}, Email: ${email}`)
+
     let query = supabaseAdmin
       .from('student_details')
       .select('*')
@@ -34,10 +36,13 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching student profile:', error)
       if (error.code === 'PGRST116') { // No rows found
+        console.log('Student not found in database')
         return NextResponse.json({ error: 'Student not found' }, { status: 404 })
       }
       return NextResponse.json({ error: 'Failed to fetch student profile' }, { status: 500 })
     }
+
+    console.log('Student found:', student.college_reg_no)
 
     return NextResponse.json({
       success: true,

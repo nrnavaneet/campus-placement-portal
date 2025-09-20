@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { downloadResume } from "@/lib/supabase"
 import {
   Dialog,
   DialogContent,
@@ -571,14 +572,8 @@ export default function AdminDashboard() {
     }
 
     try {
-      // Create a temporary link to download the resume
-      const link = document.createElement('a')
-      link.href = student.resume_url
-      link.download = `${student.first_name}_${student.college_reg_no}_resume.pdf`
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      const fileName = `${student.first_name}_${student.college_reg_no}_resume.pdf`
+      await downloadResume(student.resume_url, fileName)
     } catch (error) {
       console.error("Error downloading resume:", error)
       alert("Failed to download resume")

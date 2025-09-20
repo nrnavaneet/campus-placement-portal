@@ -50,18 +50,59 @@ export default function SettingsPage() {
     loadSettings()
   }, [])
 
-  const loadSettings = () => {
-    // Load settings from localStorage for demo
-    const savedSettings = localStorage.getItem("user_settings")
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings))
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true)
+      // For demo, using hardcoded email - in production use auth context
+      const studentEmail = "22etcs002132@msruas.ac.in"
+      
+      const response = await fetch(`/api/student/settings?email=${encodeURIComponent(studentEmail)}`)
+      if (response.ok) {
+        const result = await response.json()
+        setSettings(result.data)
+      } else {
+        console.error('Failed to load settings')
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleSettingChange = (key: string, value: boolean) => {
+  const handleSettingChange = async (key: string, value: boolean) => {
     const newSettings = { ...settings, [key]: value }
     setSettings(newSettings)
-    localStorage.setItem("user_settings", JSON.stringify(newSettings))
+    
+    try {
+      // Save to API
+      const studentEmail = "22etcs002132@msruas.ac.in"
+      
+      const response = await fetch('/api/student/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: studentEmail,
+          settings: newSettings
+        }),
+      })
+      
+      if (response.ok) {
+        setSuccess('Settings updated successfully!')
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Failed to save settings')
+        // Revert the change
+        setSettings({ ...newSettings, [key]: !value })
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      setError('Failed to save settings')
+      // Revert the change
+      setSettings({ ...newSettings, [key]: !value })
+    }
   }
 
   const handlePasswordChange = async () => {

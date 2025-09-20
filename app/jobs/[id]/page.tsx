@@ -39,32 +39,80 @@ export default function JobDetailsPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch job details
-      const allJobs = JSON.parse(localStorage.getItem("all_jobs") || "[]")
-      const jobData = allJobs.find((j: Job) => j.id === jobId)
-
+      // Fetch job details from API
+      const jobResponse = await fetch(`/api/admin/jobs/${jobId}`)
+      if (!jobResponse.ok) {
+        console.error('Failed to fetch job')
+        router.push("/jobs")
+        return
+      }
+      
+      const jobResult = await jobResponse.json()
+      const jobData = jobResult.data
+      
       if (!jobData) {
         router.push("/jobs")
         return
       }
       setJob(jobData)
 
-      // Fetch student profile
-      const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        const studentData = JSON.parse(storedProfile)
-        setStudent(studentData)
-        checkEligibility(jobData, studentData)
+      // Fetch student profile from API
+      try {
+        const studentEmail = "22etcs002132@msruas.ac.in" // Default for demo
+        const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+        
+        if (studentResponse.ok) {
+          const studentResult = await studentResponse.json()
+          const studentData = studentResult.data
+          setStudent(studentData)
+          checkEligibility(jobData, studentData)
+          
+          // Check if already applied using API
+          checkExistingApplication(studentData.college_reg_no)
+        } else {
+          // Fallback to localStorage if API fails
+          const storedProfile = localStorage.getItem("student_profile")
+          if (storedProfile) {
+            const studentData = JSON.parse(storedProfile)
+            setStudent(studentData)
+            checkEligibility(jobData, studentData)
+            checkExistingApplication(studentData.college_reg_no)
+          }
+        }
+      } catch (studentError) {
+        console.error("Error fetching student profile:", studentError)
+        // Fallback to localStorage
+        const storedProfile = localStorage.getItem("student_profile")
+        if (storedProfile) {
+          const studentData = JSON.parse(storedProfile)
+          setStudent(studentData)
+          checkEligibility(jobData, studentData)
+          checkExistingApplication(studentData.college_reg_no)
+        }
       }
 
-      // Check if already applied
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      router.push("/jobs")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const checkExistingApplication = async (studentRegNo: string) => {
+    try {
+      const response = await fetch(`/api/student/applications?student_id=${studentRegNo}`)
+      if (response.ok) {
+        const data = await response.json()
+        const existingApp = data.data?.find((app: any) => app.job_id === jobId)
+        setHasApplied(!!existingApp)
+      }
+    } catch (error) {
+      console.error('Error checking existing application:', error)
+      // Fallback to localStorage if API fails
       const applications = JSON.parse(localStorage.getItem("student_applications") || "[]")
       const existingApplication = applications.find((app: any) => app.job_id === jobId)
       setHasApplied(!!existingApplication)
-    } catch (error) {
-      console.error("Error fetching data:", error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -248,6 +296,77 @@ export default function JobDetailsPage() {
                     </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Application Action */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="pt-6">
+                {hasApplied ? (
+                  <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-800 dark:text-green-200">Application Submitted</p>
+                        <p className="text-sm text-green-600 dark:text-green-300">
+                          You have already applied for this position.
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => router.push('/applications')}
+                      variant="outline" 
+                      className="border-green-300 text-green-700 hover:bg-green-100"
+                    >
+                      View Status
+                    </Button>
+                  </div>
+                ) : !student ? (
+                  <div className="text-center p-6">
+                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Please complete your profile to apply</p>
+                    <Button onClick={() => router.push('/profile')}>
+                      Complete Profile
+                    </Button>
+                  </div>
+                ) : !eligibilityCheck.eligible ? (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-red-800 dark:text-red-200 mb-2">Not Eligible to Apply</p>
+                        <ul className="text-sm text-red-600 dark:text-red-300 space-y-1">
+                          {eligibilityCheck.reasons.map((reason, index) => (
+                            <li key={index}>• {reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : isExpired ? (
+                  <div className="text-center p-6">
+                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400 mb-2">Application Deadline Passed</p>
+                    <p className="text-sm text-gray-500">This position is no longer accepting applications.</p>
+                  </div>
+                ) : (
+                  <div className="text-center p-6">
+                    <div className="mb-4">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Ready to Apply!</p>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        You meet all the eligibility criteria for this position.
+                      </p>
+                    </div>
+                    <Button 
+                      size="lg"
+                      onClick={() => router.push(`/jobs/${jobId}/apply`)}
+                      className="px-8"
+                    >
+                      Apply Now
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

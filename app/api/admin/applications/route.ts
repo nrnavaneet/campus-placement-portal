@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // Create admin client with service role key on server side
 const supabaseAdmin = createClient(
@@ -13,13 +13,25 @@ const supabaseAdmin = createClient(
   }
 )
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch all application status from database
-    const { data, error } = await supabaseAdmin
+    const { searchParams } = new URL(request.url)
+    const jobId = searchParams.get('job_id')
+
+    let query = supabaseAdmin
       .from('application_status')
-      .select('*')
+      .select(`
+        *,
+        jobs!inner(*)
+      `)
       .order('applied_at', { ascending: false })
+
+    // If job_id is provided, filter by it
+    if (jobId) {
+      query = query.eq('job_id', jobId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Database error:', error)

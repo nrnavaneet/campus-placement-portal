@@ -58,18 +58,30 @@ export default function DashboardPage() {
         const profileCompletion = Math.round((completionScore / totalFields) * 100)
         
         // Fetch applications
-        const appsResponse = await fetch(`/api/student/applications?student_id=${profile.id}`)
+        const appsResponse = await fetch(`/api/student/applications?student_id=${profile.college_reg_no}`)
+        let applicationsData = []
+        let applicationStats = {
+          totalApplications: 0,
+          activeApplications: 0,
+          interviews: 0,
+          offers: 0,
+          placed: 0
+        }
+
         if (appsResponse.ok) {
           const appsResult = await appsResponse.json()
-          setRecentApplications(appsResult.data)
-          setStats({
-            ...appsResult.stats,
-            profileCompletion
-          })
+          applicationsData = appsResult.data || []
+          applicationStats = appsResult.stats
+          console.log('Dashboard API returned applications:', applicationsData?.length || 0)
         } else {
-          // If applications API fails, show profile completion at least
-          setStats(prev => ({ ...prev, profileCompletion }))
+          console.log('Applications API failed for dashboard')
         }
+
+        setRecentApplications(applicationsData)
+        setStats({
+          ...applicationStats,
+          profileCompletion
+        })
       }
     } catch (error) {
       console.error("Error fetching student data:", error)
@@ -232,10 +244,10 @@ export default function DashboardPage() {
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                               {application.jobs?.company_name || 'Unknown Company'}
                             </h3>
-                            <Badge className={getStatusColor(application.status)}>
+                            <Badge className={getStatusColor(application.current_stage)}>
                               <div className="flex items-center gap-1">
-                                {getStatusIcon(application.status)}
-                                {formatStatus(application.status)}
+                                {getStatusIcon(application.current_stage)}
+                                {formatStatus(application.current_stage)}
                               </div>
                             </Badge>
                           </div>
@@ -243,7 +255,7 @@ export default function DashboardPage() {
                             {application.jobs?.title || 'Job Position'}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            <span>Applied: {new Date(application.applied_date || application.created_at).toLocaleDateString()}</span>
+                            <span>Applied: {new Date(application.applied_at).toLocaleDateString()}</span>
                             {application.jobs?.application_deadline && (
                               <span>Deadline: {new Date(application.jobs.application_deadline).toLocaleDateString()}</span>
                             )}

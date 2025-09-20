@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Helper function to send notification
+async function sendApplicationNotification(studentId: string, jobTitle: string, companyName: string) {
+  // Skip notifications during build
+  if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL && !process.env.NEXT_PUBLIC_APP_URL) {
+    return
+  }
+
+  try {
+    // Get student details
+    const { data: student } = await supabaseAdmin
+      .from('student_details')
+      .select('first_name, personal_email, mobile_number')
+      .eq('id', studentId)
+      .single()
+
+    if (!student) return
+
+    console.log(`📧 Would send notification to ${student.first_name} (${student.personal_email}) about application to ${companyName} for ${jobTitle}`)
+    
+    // In production, implement actual notification sending
+    // For now, just log the notification
+  } catch (error) {
+    console.error('Error sending notification:', error)
+  }
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -20,6 +46,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Student ID is required' }, { status: 400 })
     }
 
+    console.log(`Fetching applications for student ID: ${studentId}`)
+
     // Get applications for the student
     const { data: applications, error: appsError } = await supabaseAdmin
       .from('application_status')
@@ -27,13 +55,16 @@ export async function GET(request: NextRequest) {
         *,
         jobs!inner(*)
       `)
-      .eq('student_id', studentId)
+      .eq('student_reg_no', studentId) // Use student_reg_no field
       .order('created_at', { ascending: false })
+
+    console.log('Applications query result:', { applications: applications?.length || 0, error: appsError })
 
     if (appsError) {
       console.error('Error fetching applications:', appsError)
       // If application_status table doesn't exist, return empty array
       if (appsError.code === '42P01') {
+        console.log('Application status table not found, returning empty results')
         return NextResponse.json({
           success: true,
           data: [],
@@ -52,11 +83,13 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     const stats = {
       totalApplications: applications?.length || 0,
-      activeApplications: applications?.filter(app => ['applied', 'under_review'].includes(app.status)).length || 0,
-      interviews: applications?.filter(app => app.status === 'interview').length || 0,
-      offers: applications?.filter(app => app.status === 'offered').length || 0,
-      placed: applications?.filter(app => app.status === 'placed').length || 0
+      activeApplications: applications?.filter((app: any) => ['applied', 'under_review'].includes(app.current_stage)).length || 0,
+      interviews: applications?.filter((app: any) => app.current_stage === 'interview').length || 0,
+      offers: applications?.filter((app: any) => app.current_stage === 'offered').length || 0,
+      placed: applications?.filter(app => app.current_stage === 'placed').length || 0
     }
+
+    console.log('Applications stats:', stats)
 
     return NextResponse.json({
       success: true,
@@ -81,11 +114,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Student ID and Job ID are required' }, { status: 400 })
     }
 
+    console.log(`Submitting application for student: ${student_id}, job: ${job_id}`)
+
     // Check if application already exists
     const { data: existingApp, error: checkError } = await supabaseAdmin
       .from('application_status')
       .select('*')
-      .eq('student_id', student_id)
+      .eq('student_reg_no', student_id) // Use student_reg_no field
       .eq('job_id', job_id)
       .single()
 
@@ -95,17 +130,33 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingApp) {
+      console.log('Application already exists')
       return NextResponse.json({ error: 'Application already submitted for this job' }, { status: 400 })
     }
+
+    // Get job details for the application
+    const { data: jobData, error: jobError } = await supabaseAdmin
+      .from('jobs')
+      .select('*')
+      .eq('id', job_id)
+      .single()
+
+    if (jobError || !jobData) {
+      console.error('Job not found:', jobError)
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    }
+
+    console.log('Job data found:', jobData.title)
 
     // Create new application
     const { data: newApplication, error: insertError } = await supabaseAdmin
       .from('application_status')
       .insert({
-        student_id,
+        student_reg_no: student_id, // Use student_reg_no field
         job_id,
-        status: 'applied',
-        applied_date: new Date().toISOString()
+        company_name: jobData.company_name,
+        current_stage: 'applied',
+        applied_at: new Date().toISOString()
       })
       .select(`
         *,
@@ -118,6 +169,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 })
     }
 
+    console.log('Application created successfully:', newApplication.id)
+
     // Log the activity
     const { error: activityError } = await supabaseAdmin
       .from('recent_activities')
@@ -125,7 +178,7 @@ export async function POST(request: NextRequest) {
         activity_type: 'application_submitted',
         description: `New application submitted for ${newApplication.jobs.title} at ${newApplication.jobs.company_name}`,
         details: {
-          student_id,
+          student_reg_no: student_id,
           job_id,
           company: newApplication.jobs.company_name,
           position: newApplication.jobs.title
@@ -136,6 +189,10 @@ export async function POST(request: NextRequest) {
       console.error('Error logging activity:', activityError)
       // Don't fail the request if activity logging fails
     }
+
+    // Send application confirmation notification
+    sendApplicationNotification(student_id, newApplication.jobs.title, newApplication.jobs.company_name)
+      .catch(error => console.error('Notification error:', error))
 
     return NextResponse.json({
       success: true,

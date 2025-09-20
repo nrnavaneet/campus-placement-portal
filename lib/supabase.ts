@@ -87,14 +87,6 @@ export async function uploadResume(file: File, branch: string, regNo: string, ex
     throw new Error("Resume exceeds the maximum size of 2MB.")
   }
 
-  if (isDemoMode) {
-    // Mock upload for demo
-    return Promise.resolve({
-      data: { path: getResumeStoragePath(branch, regNo) },
-      publicUrl: `/mock-storage/${getResumeStoragePath(branch, regNo)}`,
-    })
-  }
-
   // If there's an existing resume with a different branch casing, delete it first
   if (existingBranch && normalizeBranchName(existingBranch) !== normalizeBranchName(branch)) {
     try {
@@ -112,7 +104,7 @@ export async function uploadResume(file: File, branch: string, regNo: string, ex
   })
 
   if (error) {
-    throw error
+    throw new Error(`Resume upload failed: ${error.message}`)
   }
 
   const {
@@ -124,10 +116,6 @@ export async function uploadResume(file: File, branch: string, regNo: string, ex
 
 // Helper function to delete resume
 export async function deleteResume(branch: string, regNo: string) {
-  if (isDemoMode) {
-    return true
-  }
-
   const filePath = getResumeStoragePath(branch, regNo)
   const { error } = await supabase.storage.from(RESUME_BUCKET).remove([filePath])
 
@@ -140,79 +128,27 @@ export async function deleteResume(branch: string, regNo: string) {
 }
 
 // Helper function to download resume
+// Helper function to download resume from Supabase storage only
 export async function downloadResume(resumeUrl: string, fileName: string) {
   try {
-    if (isDemoMode || resumeUrl.startsWith("/mock-storage/")) {
-      // Create a mock PDF for demo
-      const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
-
-4 0 obj
-<<
-/Length 44
->>
-stream
-BT
-/F1 12 Tf
-72 720 Td
-(Demo Resume - ${fileName}) Tj
-ET
-endstream
-endobj
-
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000206 00000 n 
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-300
-%%EOF`
-
-      const blob = new Blob([pdfContent], { type: "application/pdf" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      return
+    // Check if resume URL exists and is valid
+    if (!resumeUrl || resumeUrl.startsWith("/mock-storage/")) {
+      throw new Error("No resume uploaded. Please upload your resume first.")
     }
 
-    // Real download for production
     const response = await fetch(resumeUrl)
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Resume not found. Please upload your resume first.")
+      }
+      throw new Error(`Failed to download resume: ${response.statusText}`)
+    }
+
     const blob = await response.blob()
+    if (blob.size === 0) {
+      throw new Error("Resume file is empty. Please upload your resume again.")
+    }
+
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
@@ -221,9 +157,9 @@ startxref
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-  } catch (error) {
-    console.error("Error downloading resume:", error)
-    throw new Error(`Failed to download resume from ${resumeUrl}`)
+  } catch (error: any) {
+    console.error("Resume download failed:", error)
+    throw new Error(error.message || "Failed to download resume from storage")
   }
 }
 

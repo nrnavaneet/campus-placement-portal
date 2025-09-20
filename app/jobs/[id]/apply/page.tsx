@@ -44,35 +44,83 @@ export default function JobApplicationPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch job details
-      const allJobs = JSON.parse(localStorage.getItem("all_jobs") || "[]")
-      const jobData = allJobs.find((j: Job) => j.id === jobId)
-
+      // Fetch job details from API
+      const jobResponse = await fetch(`/api/admin/jobs/${jobId}`)
+      if (!jobResponse.ok) {
+        console.error('Failed to fetch job')
+        router.push("/jobs")
+        return
+      }
+      
+      const jobResult = await jobResponse.json()
+      const jobData = jobResult.data
+      
       if (!jobData) {
         router.push("/jobs")
         return
       }
       setJob(jobData)
 
-      // Fetch student profile
-      const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        const studentData = JSON.parse(storedProfile)
-        setStudent(studentData)
-        checkEligibility(jobData, studentData)
-      } else {
-        router.push("/profile")
-        return
+      // Fetch student profile from API
+      try {
+        const studentEmail = "22etcs002132@msruas.ac.in" // Default for demo
+        const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+        
+        if (studentResponse.ok) {
+          const studentResult = await studentResponse.json()
+          const studentData = studentResult.data
+          setStudent(studentData)
+          checkEligibility(jobData, studentData)
+          
+          // Check if already applied using API
+          checkExistingApplication(studentData.college_reg_no)
+        } else {
+          // Fallback to localStorage if API fails
+          const storedProfile = localStorage.getItem("student_profile")
+          if (storedProfile) {
+            const studentData = JSON.parse(storedProfile)
+            setStudent(studentData)
+            checkEligibility(jobData, studentData)
+            checkExistingApplication(studentData.college_reg_no)
+          } else {
+            router.push("/profile")
+            return
+          }
+        }
+      } catch (studentError) {
+        console.error("Error fetching student profile:", studentError)
+        // Fallback to localStorage
+        const storedProfile = localStorage.getItem("student_profile")
+        if (storedProfile) {
+          const studentData = JSON.parse(storedProfile)
+          setStudent(studentData)
+          checkEligibility(jobData, studentData)
+          checkExistingApplication(studentData.college_reg_no)
+        } else {
+          router.push("/profile")
+          return
+        }
       }
 
-      // Check if already applied (mock check)
-      const applications = JSON.parse(localStorage.getItem("student_applications") || "[]")
-      const existingApplication = applications.find((app: any) => app.job_id === jobId)
-      setHasApplied(!!existingApplication)
     } catch (error) {
       console.error("Error fetching data:", error)
+      router.push("/jobs")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const checkExistingApplication = async (studentRegNo: string) => {
+    try {
+      const response = await fetch(`/api/student/applications?student_id=${studentRegNo}`)
+      if (response.ok) {
+        const data = await response.json()
+        const existingApp = data.data?.find((app: any) => app.job_id === jobId)
+        setHasApplied(!!existingApp)
+      }
+    } catch (error) {
+      console.error('Error checking existing application:', error)
+      setHasApplied(false) // Default to false if API fails
     }
   }
 
@@ -109,60 +157,43 @@ export default function JobApplicationPage() {
     setEligibilityCheck({ eligible, reasons })
   }
 
-  const handleApply = async () => {
-    if (!job || !student || !eligibilityCheck.eligible) return
-
-    if (!confirmations.eligibility || !confirmations.documents || !confirmations.terms) {
-      alert("Please confirm all requirements before applying")
-      return
-    }
+    const handleApply = async () => {
+    if (!student || !job) return
 
     setIsApplying(true)
-
     try {
-      // Create application record
-      const applicationData = {
-        id: `app-${Date.now()}`,
-        student_reg_no: student.college_reg_no,
-        job_id: job.id,
-        company_name: job.company_name,
-        current_stage: "applied",
-        stage_history: [
-          {
-            stage: "applied",
-            timestamp: new Date().toISOString(),
-            description: "Application submitted successfully",
-          },
-        ],
-        applied_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      // Store application
-      const existingApplications = JSON.parse(localStorage.getItem("student_applications") || "[]")
-      existingApplications.push(applicationData)
-      localStorage.setItem("student_applications", JSON.stringify(existingApplications))
-
-      // Add to recent activities
-      const activities = JSON.parse(localStorage.getItem("recent_activities") || "[]")
-      activities.unshift({
-        id: `activity-${Date.now()}`,
-        type: "application_submitted",
-        title: "Application submitted",
-        description: `${student.first_name} applied for ${job.title} at ${job.company_name}`,
-        timestamp: new Date().toISOString(),
+      // Submit application using API
+      const response = await fetch('/api/student/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          student_id: student.college_reg_no, // Use college_reg_no consistently
+          job_id: job.id
+        }),
       })
-      localStorage.setItem("recent_activities", JSON.stringify(activities.slice(0, 10)))
 
-      setHasApplied(true)
-
-      // Redirect to applications page after a delay
-      setTimeout(() => {
-        router.push("/applications")
-      }, 2000)
+      if (response.ok) {
+        // Application successful
+        setHasApplied(true)
+        
+        // Show success message and redirect
+        setTimeout(() => {
+          router.push('/applications')
+        }, 2000)
+      } else {
+        const errorData = await response.json()
+        console.error('Application failed:', errorData)
+        if (errorData.error?.includes('already submitted')) {
+          alert('You have already applied for this position.')
+        } else {
+          alert('Failed to submit application. Please try again.')
+        }
+      }
     } catch (error) {
-      console.error("Error submitting application:", error)
-      alert("Failed to submit application. Please try again.")
+      console.error('Error submitting application:', error)
+      alert('Failed to submit application. Please try again.')
     } finally {
       setIsApplying(false)
     }

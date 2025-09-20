@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { supabaseClient, type StudentDetails, uploadResume, downloadResume } from "@/lib/supabase"
-import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download } from "lucide-react"
+import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download, Eye } from "lucide-react"
 
   const branches = [
     "Computer Science",
@@ -190,6 +190,109 @@ export default function ProfilePage() {
     }
   }
 
+  const handleViewResume = () => {
+    if (!student?.resume_url) {
+      setError("No resume available to view.")
+      return
+    }
+    
+    try {
+      // For mock storage URLs or demo mode, create a demo PDF
+      if (student.resume_url.startsWith("/mock-storage/")) {
+        // Create and show improved demo PDF
+        const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 <<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 150
+>>
+stream
+BT
+/F1 16 Tf
+50 720 Td
+(DEMO RESUME) Tj
+0 -40 Td
+/F1 12 Tf
+(Student: ${student.first_name}) Tj
+0 -20 Td
+(Registration: ${student.college_reg_no}) Tj
+0 -20 Td
+(Branch: ${student.branch}) Tj
+0 -20 Td
+(Email: ${student.college_email}) Tj
+0 -40 Td
+(This is a demonstration resume file.) Tj
+0 -20 Td
+(In production, this would contain the actual resume.) Tj
+ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f
+0000000015 00000 n
+0000000074 00000 n
+0000000131 00000 n
+0000000294 00000 n
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+494
+%%EOF`
+        
+        const blob = new Blob([pdfContent], { type: "application/pdf" })
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank')
+        
+        // Clean up after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 10000)
+        return
+      }
+      
+      // For real URLs, try to open directly
+      window.open(student.resume_url, '_blank')
+    } catch (error) {
+      console.error("View error:", error)
+      setError("Failed to open resume. Please try again.")
+    }
+  }
+
   const getCompletionColor = (percentage: number) => {
     if (percentage >= 90) return "text-green-600"
     if (percentage >= 70) return "text-yellow-600"
@@ -289,10 +392,16 @@ export default function ProfilePage() {
                   {isEditing ? "Cancel Edit" : "Edit Profile"}
                 </Button>
                 {student.resume_url && (
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Resume
-                  </Button>
+                  <>
+                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleViewResume}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Resume
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleDownloadResume}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Resume
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="outline"
@@ -528,10 +637,16 @@ export default function ProfilePage() {
                           </p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={handleDownloadResume}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleViewResume}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDownloadResume}>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

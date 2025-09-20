@@ -514,3 +514,124 @@ Import trace for requested module:
  ✓ Compiled in 7.7s (805 modules)
  ✓ Compiled in 9.4s (1561 modules)
  ✓ Compiled in 4.2s (1561 modules)
+ ✓ Compiled in 10.9s (1561 modules)
+ ✓ Compiled in 967ms (805 modules)
+ ✓ Compiled in 1161ms (805 modules)
+ ✓ Compiled in 7.7s (1561 modules)
+ ✓ Compiled in 821ms (805 modules)
+ ✓ Compiled in 499ms (805 modules)
+ ✓ Compiled in 1233ms (805 modules)
+ ✓ Compiled in 3.7s (805 modules)
+ ✓ Compiled in 1241ms (805 modules)
+ ✓ Compiled in 4.4s (1561 modules)
+ ✓ Compiled in 908ms (805 modules)
+ ✓ Compiled in 4s (805 modules)
+ ✓ Compiled in 815ms (805 modules)
+ ✓ Compiled in 5.5s (1547 modules)
+ ✓ Compiled in 4.6s (1561 modules)
+ ✓ Compiled in 1487ms (805 modules)
+ ✓ Compiled in 1748ms (805 modules)
+ ✓ Compiled in 774ms (805 modules)
+ ✓ Compiled in 1064ms (805 modules)
+ ✓ Compiled in 905ms (805 modules)
+ ✓ Compiled in 4.4s (805 modules)
+ ✓ Compiled in 1349ms (805 modules)
+ ✓ Compiled in 1221ms (805 modules)
+ ✓ Compiled in 929ms (805 modules)
+ ✓ Compiled in 2.4s (805 modules)
+ ✓ Compiled in 3.9s (805 modules)
+ ✓ Compiled in 580ms (805 modules)
+ ✓ Compiled in 2.2s (805 modules)
+ ⨯ ./app/applications/page.tsx
+Error:   [31mx[0m Expected ';', '}' or <eof>
+    ,-[[36;1;4m/Users/nrnavaneet/Documents/Projects/campus-placement-portal/app/applications/page.tsx[0m:93:1]
+ [2m90[0m |             selected: applicationsWithDetails.filter(app => app.current_stage === 'selected').length,
+ [2m91[0m |             rejected: applicationsWithDetails.filter(app => app.current_stage === 'rejected').length,
+ [2m92[0m |           }
+ [2m93[0m | [35;1m,[0m[35;1m-[0m[35;1m>[0m         pending: mockApplications.filter((app) => ["applied", "under_review"].includes(app.current_stage)).length,
+ [2m94[0m | [35;1m|[0m[35;1m-[0m[35;1m>[0m         interviews: mockApplications.filter((app) => app.current_stage === "interview_scheduled").length,
+    : [35;1m`[0m[35;1m---[0m[33;1m                  ^[0m
+    : [35;1m`[0m[35;1m---[0m[35;1m-[0m [35;1mThis is the expression part of an expression statement[0m
+ [2m95[0m |             selected: mockApplications.filter((app) => app.current_stage === "selected").length,
+ [2m96[0m |             rejected: mockApplications.filter((app) => app.current_stage === "rejected").length,
+ [2m97[0m |           }
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/applications/page.tsx
+ ⨯ ./app/applications/page.tsx
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/Users/nrnavaneet/Documents/Projects/campus-placement-portal/app/applications/page.tsx[0m:116:1]
+ [2m113[0m |     return descriptions[status] || 'Status updated'
+ [2m114[0m |   }
+ [2m115[0m |       console.error("Error fetching applications:", error)
+ [2m116[0m |     } finally {
+     : [35;1m      ^^^^^^^[0m
+ [2m117[0m |       setIsLoading(false)
+ [2m118[0m |     }
+ [2m119[0m |   }
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/Users/nrnavaneet/Documents/Projects/campus-placement-portal/app/applications/page.tsx[0m:119:1]
+ [2m116[0m |     } finally {
+ [2m117[0m |       setIsLoading(false)
+ [2m118[0m |     }
+ [2m119[0m |   }
+     : [35;1m  ^[0m
+ [2m120[0m | 
+ [2m121[0m |   const getStageColor = (stage: string) => {
+ [2m122[0m |     switch (stage) {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/applications/page.tsx
+ ✓ Compiled in 70s (1561 modules)
+ ✓ Compiled in 3.6s (805 modules)
+ ✓ Compiled in 6.6s (1561 modules)
+ ✓ Compiled in 2.6s (1561 modules)
+ ✓ Compiled in 1813ms (1561 modules)
+ ✓ Compiled in 5.4s (1561 modules)
+ ✓ Compiled in 4.1s (1561 modules)
+ ✓ Compiled in 2.5s (1561 modules)
+ ✓ Compiled in 1309ms (1561 modules)
+ ✓ Compiled in 1729ms (1561 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/nrnavaneet/Documents/Projects/campus-placement-portal/.next/cache/webpack/client-development/9.pack.gz_' -> '/Users/nrnavaneet/Documents/Projects/campus-placement-portal/.next/cache/webpack/client-development/9.pack.gz'
+ ✓ Compiled in 658ms (805 modules)
+ ⨯ ./app/jobs/[id]/apply/page.tsx
+Module parse failed: Identifier 'handleApply' has already been declared (145:10)
+|         });
+|     };
+>     const handleApply = async ()=>{
+|         if (!job || !student || !eligibilityCheck.eligible) return;
+|         if (!confirmations.eligibility || !confirmations.documents || !confirmations.terms) {
+
+Import trace for requested module:
+./app/jobs/[id]/apply/page.tsx
+ ⨯ ./app/jobs/[id]/apply/page.tsx
+Module parse failed: Identifier 'handleApply' has already been declared (143:10)
+|         });
+|     };
+>     const handleApply = async ()=>{
+|         if (!job || !student || !eligibilityCheck.eligible) return;
+|         if (!confirmations.eligibility || !confirmations.documents || !confirmations.terms) {
+
+Import trace for requested module:
+./app/jobs/[id]/apply/page.tsx
+ ✓ Compiled in 731ms (805 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/nrnavaneet/Documents/Projects/campus-placement-portal/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/nrnavaneet/Documents/Projects/campus-placement-portal/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled in 1017ms (805 modules)
+ ✓ Compiled in 1363ms (805 modules)
+ ✓ Compiled in 1053ms (805 modules)
+ ✓ Compiled in 1442ms (805 modules)
+ ✓ Compiled in 859ms (805 modules)
+ ✓ Compiled in 1082ms (805 modules)
+ ✓ Compiled in 1276ms (805 modules)
+ ✓ Compiled in 1314ms (805 modules)
+ ✓ Compiled in 2.6s (805 modules)
+ ○ Compiling /api/student/applications ...

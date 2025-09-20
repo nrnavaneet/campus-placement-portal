@@ -14,6 +14,20 @@ interface ApplicationWithDetails extends ApplicationStatus {
   job_title?: string
   company_logo?: string
   package_range?: string
+  rounds?: ApplicationRound[]
+  current_round?: ApplicationRound
+}
+
+interface ApplicationRound {
+  id: string
+  round_number: number
+  round_name: string
+  round_type: string
+  status: string
+  scheduled_at?: string
+  completed_at?: string
+  feedback?: string
+  score?: number
 }
 
 export default function ApplicationsPage() {
@@ -37,127 +51,135 @@ export default function ApplicationsPage() {
     try {
       // Get student profile
       const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        setStudent(JSON.parse(storedProfile))
+      if (!storedProfile) {
+        router.push('/profile')
+        return
       }
+      
+      const studentData = JSON.parse(storedProfile)
+      setStudent(studentData)
 
-      // Mock application data for demo
-      const mockApplications: ApplicationWithDetails[] = [
-        {
-          id: "app-1",
-          student_reg_no: "22DEMO001",
-          job_id: "job-1",
-          company_name: "TechCorp Solutions",
-          job_title: "Software Developer",
-          company_logo: "/placeholder.svg?height=40&width=40",
-          package_range: "₹6L - ₹12L",
-          current_stage: "interview_scheduled",
-          stage_history: [
-            { stage: "applied", timestamp: "2024-01-15T10:00:00Z", description: "Application submitted successfully" },
-            {
-              stage: "under_review",
-              timestamp: "2024-01-18T14:30:00Z",
-              description: "Application under review by HR team",
-            },
-            {
-              stage: "shortlisted",
-              timestamp: "2024-01-22T09:15:00Z",
-              description: "Shortlisted for technical assessment",
-            },
-            {
-              stage: "interview_scheduled",
-              timestamp: "2024-01-25T16:45:00Z",
-              description: "Technical interview scheduled for Feb 2, 2024",
-            },
-          ],
-          applied_at: "2024-01-15T10:00:00Z",
-          updated_at: "2024-01-25T16:45:00Z",
-        },
-        {
-          id: "app-2",
-          student_reg_no: "22DEMO001",
-          job_id: "job-2",
-          company_name: "DataViz Inc",
-          job_title: "Data Analyst Intern",
-          company_logo: "/placeholder.svg?height=40&width=40",
-          package_range: "₹25K - ₹40K",
-          current_stage: "under_review",
-          stage_history: [
-            { stage: "applied", timestamp: "2024-01-20T11:30:00Z", description: "Application submitted successfully" },
-            { stage: "under_review", timestamp: "2024-01-22T15:20:00Z", description: "Application under review" },
-          ],
-          applied_at: "2024-01-20T11:30:00Z",
-          updated_at: "2024-01-22T15:20:00Z",
-        },
-        {
-          id: "app-3",
-          student_reg_no: "22DEMO001",
-          job_id: "job-3",
-          company_name: "InnovateTech",
-          job_title: "Frontend Developer",
-          company_logo: "/placeholder.svg?height=40&width=40",
-          package_range: "₹5L - ₹9L",
-          current_stage: "selected",
-          stage_history: [
-            { stage: "applied", timestamp: "2024-01-10T09:00:00Z", description: "Application submitted successfully" },
-            { stage: "under_review", timestamp: "2024-01-12T10:30:00Z", description: "Portfolio review in progress" },
-            {
-              stage: "shortlisted",
-              timestamp: "2024-01-15T14:15:00Z",
-              description: "Shortlisted for technical interview",
-            },
-            {
-              stage: "interview_scheduled",
-              timestamp: "2024-01-18T11:00:00Z",
-              description: "Technical interview completed",
-            },
-            {
-              stage: "selected",
-              timestamp: "2024-01-25T17:30:00Z",
-              description: "Congratulations! You have been selected",
-            },
-          ],
-          applied_at: "2024-01-10T09:00:00Z",
-          updated_at: "2024-01-25T17:30:00Z",
-        },
-        {
-          id: "app-4",
-          student_reg_no: "22DEMO001",
-          job_id: "job-4",
-          company_name: "StartupXYZ",
-          job_title: "Full Stack Developer",
-          company_logo: "/placeholder.svg?height=40&width=40",
-          package_range: "₹4L - ₹8L",
-          current_stage: "rejected",
-          stage_history: [
-            { stage: "applied", timestamp: "2024-01-05T08:30:00Z", description: "Application submitted successfully" },
-            { stage: "under_review", timestamp: "2024-01-08T12:00:00Z", description: "Application under review" },
-            {
-              stage: "rejected",
-              timestamp: "2024-01-12T16:20:00Z",
-              description: "Thank you for your interest. We have decided to move forward with other candidates.",
-            },
-          ],
-          applied_at: "2024-01-05T08:30:00Z",
-          updated_at: "2024-01-12T16:20:00Z",
-        },
-      ]
+      // Fetch real application data from API
+      const response = await fetch(`/api/student/applications?student_id=${studentData.college_reg_no}`)
+      let applicationsData = []
+      
+      if (response.ok) {
+        const data = await response.json()
+        applicationsData = data.data || []
+        console.log('API returned applications:', applicationsData.length)
+      } else {
+        console.log('Applications API failed')
+      }
+      
+      // Transform API data to match the expected format and fetch round data
+      const applicationsWithDetails: ApplicationWithDetails[] = await Promise.all(
+        applicationsData.map(async (app: any) => {
+          const baseApp = {
+            id: app.id,
+            student_reg_no: app.student_reg_no,
+            job_id: app.job_id,
+            company_name: app.company_name,
+            job_title: app.jobs?.title || 'Unknown Job',
+            company_logo: "/placeholder.svg?height=40&width=40",
+            package_range: app.jobs ? `₹${(app.jobs.package_min / 100000).toFixed(1)}L - ₹${(app.jobs.package_max / 100000).toFixed(1)}L` : 'Not specified',
+            current_stage: app.current_stage,
+            stage_history: [
+              { 
+                stage: "applied", 
+                timestamp: app.applied_at, 
+                description: "Application submitted successfully" 
+              },
+              // Add more stage history based on status
+              ...(app.current_stage !== 'applied' ? [{
+                stage: app.current_stage,
+                timestamp: app.updated_at,
+                description: getStatusDescription(app.current_stage)
+              }] : [])
+            ],
+            applied_at: app.applied_at,
+            updated_at: app.updated_at,
+            rounds: [],
+            current_round: undefined
+          }
 
-      setApplications(mockApplications)
+          // Fetch round data for this application
+          try {
+            const roundsResponse = await fetch(`/api/student/application-rounds?student_id=${studentData.college_reg_no}&application_id=${app.id}`)
+            if (roundsResponse.ok) {
+              const roundsData = await roundsResponse.json()
+              const appRounds = roundsData.applications?.[app.id]?.rounds || []
+              
+              baseApp.rounds = appRounds
+              // Find current round (first non-completed round or last round)
+              const currentRound = appRounds.find((r: ApplicationRound) => 
+                ['in_progress', 'scheduled', 'pending'].includes(r.status)
+              ) || appRounds[appRounds.length - 1]
+              
+              baseApp.current_round = currentRound
+            }
+          } catch (roundError) {
+            console.error(`Error fetching rounds for application ${app.id}:`, roundError)
+          }
 
-      // Calculate stats
+          return baseApp
+        })
+      )
+
+      setApplications(applicationsWithDetails)
+
+      // Calculate stats from real data
       const stats = {
-        total: mockApplications.length,
-        pending: mockApplications.filter((app) => ["applied", "under_review"].includes(app.current_stage)).length,
-        interviews: mockApplications.filter((app) => app.current_stage === "interview_scheduled").length,
-        selected: mockApplications.filter((app) => app.current_stage === "selected").length,
-        rejected: mockApplications.filter((app) => app.current_stage === "rejected").length,
+        total: applicationsWithDetails.length,
+        pending: applicationsWithDetails.filter(app => ['applied', 'under_review'].includes(app.current_stage)).length,
+        interviews: applicationsWithDetails.filter(app => app.current_stage === 'interview').length,
+        selected: applicationsWithDetails.filter(app => app.current_stage === 'selected').length,
+        rejected: applicationsWithDetails.filter(app => app.current_stage === 'rejected').length,
       }
       setStats(stats)
+
     } catch (error) {
       console.error("Error fetching applications:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Helper function to get status descriptions
+  const getStatusDescription = (status: string): string => {
+    const descriptions: Record<string, string> = {
+      'applied': 'Application submitted successfully',
+      'under_review': 'Application under review by HR team',
+      'shortlisted': 'Shortlisted for next round',
+      'interview': 'Interview scheduled',
+      'selected': 'Congratulations! You have been selected',
+      'rejected': 'Thank you for your interest. Unfortunately, we have decided to move forward with other candidates.',
+      'withdrawn': 'Application withdrawn by student'
+    }
+    return descriptions[status] || 'Status updated'
+  }
+
+  // Helper function to get round status colors
+  const getRoundStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'pending': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+      'in_progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+      'passed': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+      'failed': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+      'scheduled': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+      'completed': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+      'no_show': 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+    }
+    return colors[status] || 'bg-gray-100 text-gray-800'
+  }
+
+  // Helper function to get round status icon
+  const getRoundStatusIcon = (status: string) => {
+    switch (status) {
+      case 'passed': return <CheckCircle className="w-4 h-4" />
+      case 'failed': return <XCircle className="w-4 h-4" />
+      case 'scheduled': return <Calendar className="w-4 h-4" />
+      case 'in_progress': return <Clock className="w-4 h-4" />
+      default: return <AlertCircle className="w-4 h-4" />
     }
   }
 
@@ -293,6 +315,73 @@ export default function ApplicationsPage() {
               ))}
             </div>
           </div>
+
+          {/* Current Round Status */}
+          {application.current_round && (
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-medium text-sm">Current Round</h4>
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {getRoundStatusIcon(application.current_round.status)}
+                  <div>
+                    <p className="font-medium text-sm">
+                      Round {application.current_round.round_number}: {application.current_round.round_name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+                      {application.current_round.round_type}
+                    </p>
+                    {application.current_round.scheduled_at && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Scheduled: {new Date(application.current_round.scheduled_at).toLocaleString()}
+                      </p>
+                    )}
+                    {application.current_round.score && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Score: {application.current_round.score}/100
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Badge className={getRoundStatusColor(application.current_round.status)}>
+                  {application.current_round.status.replace('_', ' ')}
+                </Badge>
+              </div>
+              {application.current_round.feedback && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Feedback</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">{application.current_round.feedback}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Round Progress Overview */}
+          {application.rounds && application.rounds.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm">Round Progress</h4>
+              <div className="flex gap-1">
+                {application.rounds.map((round, index) => (
+                  <div
+                    key={round.id}
+                    className={`flex-1 h-2 rounded-full ${
+                      round.status === 'passed' 
+                        ? 'bg-green-500' 
+                        : round.status === 'failed' 
+                        ? 'bg-red-500'
+                        : round.status === 'in_progress' || round.status === 'scheduled'
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300'
+                    }`}
+                    title={`${round.round_name}: ${round.status}`}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Round 1</span>
+                <span>Round {application.rounds.length}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between items-center pt-4 border-t">
             <div className="text-sm text-gray-500">Applied: {formatDate(application.applied_at)}</div>

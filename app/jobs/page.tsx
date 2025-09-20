@@ -42,14 +42,22 @@ export default function JobsPage() {
 
   const router = useRouter()
 
+  const [applicationData, setApplicationData] = useState<any[]>([])
+
   useEffect(() => {
     fetchJobs()
     fetchStudentProfile()
   }, [])
 
   useEffect(() => {
+    if (studentProfile) {
+      fetchApplicationData()
+    }
+  }, [studentProfile])
+
+  useEffect(() => {
     filterJobs()
-  }, [jobs, activeTab, studentProfile])
+  }, [jobs, activeTab, studentProfile, applicationData])
 
   const fetchJobs = async () => {
     try {
@@ -83,9 +91,31 @@ export default function JobsPage() {
     }
   }
 
+  const fetchApplicationData = async () => {
+    if (!studentProfile?.college_reg_no) return
+    
+    try {
+      const response = await fetch(`/api/student/applications?student_id=${studentProfile.college_reg_no}`)
+      let applicationsData = []
+      
+      if (response.ok) {
+        const result = await response.json()
+        applicationsData = result.data || []
+        console.log('Jobs page API returned applications:', applicationsData.length)
+      } else {
+        console.log('Applications API failed for jobs page')
+      }
+      
+      setApplicationData(applicationsData)
+    } catch (error) {
+      console.error('Error fetching application data:', error)
+      setApplicationData([])
+    }
+  }
+
   const filterJobs = () => {
     if (!studentProfile) {
-      setFilteredJobs(jobs.filter(job => job.status === "active"))
+      setFilteredJobs(jobs.filter(job => job.status === "active" || job.status === "upcoming"))
       return
     }
 
@@ -93,26 +123,40 @@ export default function JobsPage() {
 
     switch (activeTab) {
       case "eligible":
+        // Get applied job IDs to exclude them from eligible jobs
+        const appliedJobIds = applicationData.map(app => app.job_id)
         filtered = jobs.filter(job => 
-          job.status === "active" &&
-          isEligibleForJob(job, studentProfile)
+          (job.status === "active" || job.status === "upcoming") &&
+          isEligibleForJob(job, studentProfile) &&
+          !appliedJobIds.includes(job.id) // Exclude applied jobs
         )
         break
       case "applied":
-        filtered = []
+        // Show jobs that the student has applied to
+        const studentAppliedJobIds = applicationData.map(app => app.job_id)
+        filtered = jobs.filter(job => studentAppliedJobIds.includes(job.id))
         break
       case "deadline":
+        // Get applied job IDs to exclude them from deadline jobs
+        const deadlineAppliedJobIds = applicationData.map(app => app.job_id)
         filtered = jobs.filter(job => {
           if (!job.application_deadline) return false
           const deadline = new Date(job.application_deadline)
           const today = new Date()
           const diffTime = deadline.getTime() - today.getTime()
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          return diffDays <= 7 && diffDays > 0 && job.status === "active"
+          return diffDays <= 7 && diffDays > 0 && 
+                 (job.status === "active" || job.status === "upcoming") &&
+                 !deadlineAppliedJobIds.includes(job.id) // Exclude applied jobs
         })
         break
       default:
-        filtered = jobs.filter(job => job.status === "active")
+        // All Jobs - exclude applied jobs
+        const allJobsAppliedIds = applicationData.map(app => app.job_id)
+        filtered = jobs.filter(job => 
+          (job.status === "active" || job.status === "upcoming") &&
+          !allJobsAppliedIds.includes(job.id) // Exclude applied jobs
+        )
     }
 
     setFilteredJobs(filtered)
@@ -162,7 +206,7 @@ export default function JobsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          student_id: studentProfile.id,
+          student_id: studentProfile.college_reg_no, // Use college_reg_no consistently
           job_id: selectedJob.id,
         }),
       })

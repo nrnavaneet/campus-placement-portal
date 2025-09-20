@@ -98,6 +98,28 @@ INSERT INTO public.placement_policy (max_offers_allowed, second_offer_multiplier
 (3, 2.0, 'Students can accept maximum 3 offers. Second offer must be at least 2x the first offer CTC.')
 ON CONFLICT DO NOTHING;
 
+-- Create student_settings table
+CREATE TABLE IF NOT EXISTS public.student_settings (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    student_id UUID REFERENCES public.student_details(id) ON DELETE CASCADE,
+    settings JSONB NOT NULL DEFAULT '{"emailNotifications": true, "smsNotifications": false, "applicationUpdates": true, "marketingEmails": false, "deadlineReminders": true, "weeklyDigest": true}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(student_id)
+);
+
+-- Create notification_logs table
+CREATE TABLE IF NOT EXISTS public.notification_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    student_id UUID REFERENCES public.student_details(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('email', 'sms')),
+    recipient VARCHAR(255) NOT NULL,
+    subject TEXT,
+    message TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'failed', 'pending')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_student_details_reg_no ON public.student_details(college_reg_no);
 CREATE INDEX IF NOT EXISTS idx_student_details_branch ON public.student_details(branch);
@@ -108,6 +130,9 @@ CREATE INDEX IF NOT EXISTS idx_jobs_branches ON public.jobs USING GIN(branches_a
 CREATE INDEX IF NOT EXISTS idx_application_status_student ON public.application_status(student_reg_no);
 CREATE INDEX IF NOT EXISTS idx_application_status_job ON public.application_status(job_id);
 CREATE INDEX IF NOT EXISTS idx_grievance_status ON public.grievance_reports(status);
+CREATE INDEX IF NOT EXISTS idx_student_settings_student_id ON public.student_settings(student_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_student_id ON public.notification_logs(student_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_type ON public.notification_logs(type);
 
 -- Enable RLS on all tables
 ALTER TABLE public.student_details ENABLE ROW LEVEL SECURITY;
@@ -465,5 +490,105 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON public.recent_activities TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+-- ============================================
+-- RECRUITMENT ROUNDS SYSTEM TABLES
+-- ============================================
+
+-- Create job_rounds table to define the recruitment process for each job
+CREATE TABLE IF NOT EXISTS public.job_rounds (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    job_id UUID REFERENCES public.jobs(id) ON DELETE CASCADE,
+    round_number INTEGER NOT NULL,
+    round_name VARCHAR(100) NOT NULL, -- e.g. 'Resume Shortlisting', 'Online Assessment', 'Technical Round 1'
+    round_type VARCHAR(50) NOT NULL DEFAULT 'interview', -- 'screening', 'assessment', 'interview', 'final'
+    description TEXT,
+    is_required BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(job_id, round_number)
+);
+
+-- Create application_rounds table to track student progress through each round
+CREATE TABLE IF NOT EXISTS public.application_rounds (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    application_id UUID REFERENCES public.application_status(id) ON DELETE CASCADE,
+    job_round_id UUID REFERENCES public.job_rounds(id) ON DELETE CASCADE,
+    student_reg_no VARCHAR(20) REFERENCES public.student_details(college_reg_no),
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'passed', 'failed', 'scheduled', 'completed', 'no_show')),
+    notes TEXT,
+    scheduled_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    feedback TEXT,
+    score DECIMAL(5,2), -- Optional scoring system
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(application_id, job_round_id)
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_job_rounds_job_id ON public.job_rounds(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_rounds_round_number ON public.job_rounds(round_number);
+CREATE INDEX IF NOT EXISTS idx_application_rounds_application_id ON public.application_rounds(application_id);
+CREATE INDEX IF NOT EXISTS idx_application_rounds_status ON public.application_rounds(status);
+CREATE INDEX IF NOT EXISTS idx_application_rounds_student_reg_no ON public.application_rounds(student_reg_no);
+
+-- Insert default round templates that companies commonly use
+-- Note: These are just for reference and should be copied when creating actual jobs
+-- We'll create a separate templates table or handle templates in the application layer
+-- Removing the template inserts to avoid foreign key constraint errors
+
+-- CREATE TABLE IF NOT EXISTS public.round_templates (
+--     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+--     round_name VARCHAR(100) NOT NULL,
+--     round_type VARCHAR(50) NOT NULL DEFAULT 'interview',
+--     description TEXT,
+--     typical_order INTEGER,
+--     is_commonly_used BOOLEAN DEFAULT TRUE,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
+
+-- INSERT INTO public.round_templates (round_name, round_type, description, typical_order) VALUES
+--     ('Resume Shortlisting', 'screening', 'Initial screening based on resume and eligibility criteria', 1),
+--     ('Online Assessment', 'assessment', 'Technical and aptitude assessment', 2),
+--     ('Group Discussion', 'interview', 'Group discussion to evaluate communication and leadership skills', 3),
+--     ('Technical Round 1', 'interview', 'Technical interview focusing on programming and problem-solving', 4),
+--     ('Technical Round 2', 'interview', 'Advanced technical interview and system design', 5),
+--     ('Managerial Round', 'interview', 'Interview with hiring manager focusing on experience and fit', 6),
+--     ('HR Round', 'final', 'Final interview with HR for culture fit and offer discussion', 7)
+-- ON CONFLICT DO NOTHING;
+
+-- Create policies for job_rounds
+CREATE POLICY "Allow authenticated users to read job_rounds" ON public.job_rounds
+FOR SELECT USING (true);
+
+CREATE POLICY "Allow authenticated users to manage job_rounds" ON public.job_rounds
+FOR ALL USING (true);
+
+-- Create policies for application_rounds
+CREATE POLICY "Allow students to read their application_rounds" ON public.application_rounds
+FOR SELECT USING (
+    student_reg_no = (
+        SELECT college_reg_no 
+        FROM public.student_details 
+        WHERE user_id = auth.uid()
+    )
+);
+
+CREATE POLICY "Allow admins to read all application_rounds" ON public.application_rounds
+FOR SELECT USING (true);
+
+CREATE POLICY "Allow admins to manage application_rounds" ON public.application_rounds
+FOR ALL USING (true);
+
+-- Enable RLS on new tables
+ALTER TABLE public.job_rounds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.application_rounds ENABLE ROW LEVEL SECURITY;
+
+-- Grant permissions on new tables
+GRANT ALL ON public.job_rounds TO anon, authenticated;
+GRANT ALL ON public.application_rounds TO anon, authenticated;
+
 -- Success message
-SELECT 'Database setup completed successfully! Branch-wise resume storage is configured.' as message;
+SELECT 'Database setup completed successfully! Recruitment rounds system is configured.' as message;
