@@ -144,37 +144,6 @@ export default function SettingsPage() {
     }
   }
 
-  const handleExportData = async () => {
-    setIsLoading(true)
-    try {
-      // Mock data export
-      const studentProfile = localStorage.getItem("student_profile")
-      const userData = {
-        profile: studentProfile ? JSON.parse(studentProfile) : null,
-        settings: settings,
-        exportDate: new Date().toISOString(),
-      }
-
-      const dataStr = JSON.stringify(userData, null, 2)
-      const dataBlob = new Blob([dataStr], { type: "application/json" })
-      const url = URL.createObjectURL(dataBlob)
-
-      const link = document.createElement("a")
-      link.href = url
-      link.download = "my-placement-data.json"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      setSuccess("Data exported successfully!")
-    } catch (error) {
-      setError("Failed to export data")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.")
 
@@ -398,19 +367,6 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Export My Data</Label>
-                      <p className="text-sm text-gray-500">Download a copy of your personal data</p>
-                    </div>
-                    <Button variant="outline" onClick={handleExportData} disabled={isLoading}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Export
-                    </Button>
-                  </div>
-
-                  <Separator />
-
                   <div className="space-y-4">
                     <div className="space-y-0.5">
                       <Label className="text-base text-red-600">Danger Zone</Label>

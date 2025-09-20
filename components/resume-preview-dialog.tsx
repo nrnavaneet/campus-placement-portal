@@ -28,15 +28,17 @@ export function ResumePreviewDialog({
             <DialogTitle className="text-lg font-semibold pr-4">
               Resume Preview - {studentName} ({studentRegNo})
             </DialogTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownload}
-              className="gap-2 flex-shrink-0"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download</span>
-            </Button>
+            <div className="flex-shrink-0 -mr-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDownload}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+            </div>
           </div>
         </DialogHeader>
         

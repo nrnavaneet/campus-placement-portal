@@ -184,7 +184,7 @@ export function RegistrationForm() {
 
     setIsLoading(true)
     try {
-      // Get current user (mock for demo)
+      // Get current authenticated user
       const {
         data: { user },
       } = await supabaseClient.auth.getUser()
@@ -245,7 +245,7 @@ export function RegistrationForm() {
 
       const result = await response.json()
 
-      // Store student data in localStorage for demo
+      // Store student data in localStorage for session management
       localStorage.setItem("student_profile", JSON.stringify(result.data))
 
       router.push("/dashboard")

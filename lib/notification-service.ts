@@ -1,6 +1,5 @@
 // Comprehensive notification service for campus placement portal
 import { supabaseAdmin } from '@/lib/supabase'
-import emailjs from '@emailjs/browser'
 
 // Helper function to check notification settings
 async function getStudentNotificationSettings(studentId: string, regNo?: string) {
@@ -432,7 +431,7 @@ MSRUAS`
 
 // 1. New Opportunity SMS
 function createNewOpportunitySMSTemplate(data: NewOpportunityData): SMSTemplate {
-  const message = `New Job Alert! ${data.jobTitle} at ${data.companyName} (${data.packageRange}). Deadline: ${data.deadline}. Apply now via placement portal! - MSRU Placements`
+  const message = `New Job Alert! ${data.jobTitle} at ${data.companyName} (${data.packageRange}). Deadline: ${data.deadline}. Apply now via placement portal! - MSRUAS Placements`
   return { message }
 }
 
@@ -444,13 +443,13 @@ function createApplicationStatusSMSTemplate(data: ApplicationStatusData): SMSTem
                        data.newStatus.toLowerCase() === 'offer_extended' ? 'Offer Extended!' :
                        data.newStatus.toLowerCase() === 'applied' ? 'Application Submitted!' : 'Status Updated'
   
-  const message = `Hi ${data.studentName}! ${statusMessage} Your application for ${data.jobTitle} at ${data.companyName} status: ${data.newStatus.replace('_', ' ').toUpperCase()}. Check portal for details. - MSRU Placements`
+  const message = `Hi ${data.studentName}! ${statusMessage} Your application for ${data.jobTitle} at ${data.companyName} status: ${data.newStatus.replace('_', ' ').toUpperCase()}. Check portal for details. - MSRUAS Placements`
   return { message }
 }
 
 // 3. Placement Congratulation SMS  
 function createPlacementCongratulationSMSTemplate(data: PlacementCongratulationData): SMSTemplate {
-  const message = `CONGRATULATIONS ${data.studentName}! You're PLACED at ${data.companyName} as ${data.jobTitle}! Package: ${data.packageOffered}. Joining: ${data.joiningDate}. Proud of you! - MSRU Placements`
+  const message = `CONGRATULATIONS ${data.studentName}! You're PLACED at ${data.companyName} as ${data.jobTitle}! Package: ${data.packageOffered}. Joining: ${data.joiningDate}. Proud of you! - MSRUAS Placements`
   return { message }
 }
 
@@ -459,46 +458,58 @@ function createDeadlineReminderSMSTemplate(data: DeadlineReminderData): SMSTempl
   const urgencyPrefix = data.daysLeft <= 1 ? 'URGENT' : data.daysLeft <= 3 ? 'HURRY' : 'REMINDER'
   const timeLeft = data.daysLeft === 0 ? 'TODAY!' : data.daysLeft === 1 ? '1 day left!' : `${data.daysLeft} days left!`
   
-  const message = `${urgencyPrefix}: ${data.jobTitle} at ${data.companyName} deadline ${timeLeft} Apply now via portal before ${data.deadline}. Don't miss out! - MSRU Placements`
+  const message = `${urgencyPrefix}: ${data.jobTitle} at ${data.companyName} deadline ${timeLeft} Apply now via portal before ${data.deadline}. Don't miss out! - MSRUAS Placements`
   return { message }
 }
 
 // Send email notification using EmailJS
+// Send Email using console logging for development or Nodemailer for production
 async function sendEmail(to: string, template: EmailTemplate): Promise<boolean> {
   try {
-    console.log('Sending email to:', to)
+    console.log('📧 Email Notification Details:')
+    console.log('To:', to)
     console.log('Subject:', template.subject)
+    console.log('Content Preview:', template.textBody.substring(0, 300) + '...')
     
-    // EmailJS configuration - you need to set these in your environment variables
-    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'default_service'
-    const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_1'
-    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ''
+    // Check if we're in production and have email credentials
+    const isProduction = process.env.NODE_ENV === 'production'
+    const hasEmailConfig = process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS
     
-    // Initialize EmailJS (this should be done once in your app)
-    if (typeof window !== 'undefined') {
-      emailjs.init(publicKey)
-      
-      const result = await emailjs.send(serviceId, templateId, {
-        to_email: to,
-        subject: template.subject,
-        html_content: template.htmlBody,
-        text_content: template.textBody,
-        from_name: 'MSRU Placement Cell',
-        reply_to: process.env.NEXT_PUBLIC_REPLY_TO_EMAIL || 'placements@msruas.ac.in'
-      })
-      
-      console.log('Email sent successfully to:', to)
-      return result.status === 200
+    if (isProduction && hasEmailConfig) {
+      // Use actual email service in production
+      try {
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to,
+            subject: template.subject,
+            html: template.htmlBody,
+            text: template.textBody
+          })
+        })
+        
+        if (response.ok) {
+          console.log('✅ Email sent successfully to:', to)
+          return true
+        } else {
+          console.error('❌ Email service error:', await response.text())
+          return false
+        }
+      } catch (emailError) {
+        console.error('❌ Email API error:', emailError)
+        return false
+      }
     } else {
-      // Server-side fallback - use console logging for now
-      console.log('Email would be sent to:', to)
-      console.log('Subject:', template.subject)
-      console.log('Content preview:', template.textBody.substring(0, 200) + '...')
-      console.log('EmailJS requires browser environment. Consider using nodemailer for server-side.')
+      // Development mode - simulate email sending
+      await new Promise(resolve => setTimeout(resolve, 500))
+      console.log('✅ Email simulated successfully to:', to)
+      console.log('🔧 Note: Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables for actual email sending')
       return true
     }
+    
   } catch (error) {
-    console.error('Failed to send email:', error)
+    console.error('❌ Failed to send email:', error)
     return false
   }
 }
@@ -652,4 +663,92 @@ export async function sendApplicationNotification(applicationData: {
     console.error('Failed to send application notification:', error)
     return { emailSent: false, smsSent: false }
   }
+}
+
+// Admin application status update notification
+export async function sendAdminApplicationStatusUpdate(data: {
+  studentRegNo: string
+  studentName: string
+  jobTitle: string
+  companyName: string
+  applicationId: string
+  newStatus: string
+  statusMessage?: string
+  notes?: string
+}): Promise<{ emailSent: boolean; smsSent: boolean }> {
+  try {
+    // Fetch student details for notification settings
+    const studentData = await fetchStudentDataByRegNo(data.studentRegNo)
+    if (!studentData) {
+      console.log('Student not found:', data.studentRegNo)
+      return { emailSent: false, smsSent: false }
+    }
+
+    // Check notification settings
+    const settings = await getStudentNotificationSettings(studentData.id, data.studentRegNo)
+    
+    // Skip if application status updates are disabled
+    if (!settings.applicationStatusUpdates) {
+      console.log('Application status notifications disabled for student:', data.studentRegNo)
+      return { emailSent: false, smsSent: false }
+    }
+
+    const notificationData: ApplicationStatusData = {
+      studentName: data.studentName,
+      studentRegNo: data.studentRegNo,
+      studentEmail: studentData.college_email,
+      studentPhone: studentData.mobile_number,
+      jobTitle: data.jobTitle,
+      companyName: data.companyName,
+      previousStatus: 'pending', // We don't have previous status in this context
+      newStatus: data.newStatus,
+      applicationDate: new Date().toLocaleDateString()
+    }
+
+    // Send email notification
+    const emailSent = await sendEmail(
+      studentData.college_email,
+      createApplicationStatusTemplate(notificationData)
+    )
+
+    // Send SMS notification
+    const smsSent = await sendSMS(
+      studentData.mobile_number,
+      createApplicationStatusSMSTemplate(notificationData)
+    )
+
+    return { emailSent, smsSent }
+  } catch (error) {
+    console.error('Failed to send admin application status update:', error)
+    return { emailSent: false, smsSent: false }
+  }
+}
+
+// Helper function to fetch student by registration number
+async function fetchStudentDataByRegNo(regNo: string) {
+  try {
+    const { data } = await supabaseAdmin
+      .from('student_details')
+      .select('*')
+      .eq('college_reg_no', regNo)
+      .single()
+    return data
+  } catch (error) {
+    console.error('Error fetching student by reg no:', error)
+    return null
+  }
+}
+
+// Helper function for default status messages
+function getDefaultStatusMessage(status: string): string {
+  const messages: Record<string, string> = {
+    'applied': 'Your application has been received and is being reviewed.',
+    'screening': 'Your application is currently under screening.',
+    'interview': 'You have been shortlisted for an interview!',
+    'selected': 'Congratulations! You have been selected.',
+    'rejected': 'Unfortunately, you were not selected for this position.',
+    'on_hold': 'Your application is currently on hold.',
+    'withdrawn': 'Your application has been withdrawn.'
+  }
+  return messages[status] || 'Your application status has been updated.'
 }

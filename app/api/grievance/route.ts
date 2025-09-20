@@ -1,21 +1,38 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from '@supabase/supabase-js'
+
+// Create admin client with service role key on server side
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Grievance submission started...')
     const body = await request.json()
+    console.log('📝 Received data:', body)
+    
     const { studentRegNo, studentName, issueType, message, contactEmail } = body
 
     // Validate required fields
     if (!studentRegNo || !studentName || !issueType || !message || !contactEmail) {
+      console.log('❌ Validation failed - missing fields')
       return NextResponse.json(
         { error: "All fields are required" },
         { status: 400 }
       )
     }
 
+    console.log('✅ Validation passed, inserting to database...')
     // Insert grievance into database
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("grievance_reports")
       .insert([
         {
@@ -30,16 +47,14 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (error) {
-      console.error("Database error:", error)
+      console.error("❌ Database error:", error)
       return NextResponse.json(
-        { error: "Failed to submit grievance" },
+        { error: "Failed to submit grievance", details: error.message },
         { status: 500 }
       )
     }
 
-    // TODO: Send notification email to admin and confirmation to student
-    // This can be implemented using the notification service
-
+    console.log('✅ Grievance submitted successfully:', data)
     return NextResponse.json(
       { message: "Grievance submitted successfully", data },
       { status: 201 }
@@ -58,7 +73,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const studentRegNo = searchParams.get("student_reg_no")
 
-    let query = supabase.from("grievance_reports").select("*")
+    let query = supabaseAdmin.from("grievance_reports").select("*")
 
     // If student reg no provided, filter by it (for student dashboard)
     if (studentRegNo) {

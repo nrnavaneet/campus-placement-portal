@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendAdminApplicationStatusUpdate } from '@/lib/notification-service'
 
 // Create admin client with service role key on server side
 const supabaseAdmin = createClient(
@@ -94,6 +95,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Send email notification to student about status update
+    try {
+      await sendAdminApplicationStatusUpdate({
+        studentRegNo: data.student_reg_no,
+        studentName: data.student_name || 'Student',
+        jobTitle: data.jobs.title,
+        companyName: data.jobs.company_name,
+        applicationId: data.id,
+        newStatus: current_stage,
+        statusMessage: getStatusMessage(current_stage),
+        notes: notes || ''
+      })
+    } catch (notificationError) {
+      console.error('Failed to send email notification:', notificationError)
+      // Don't fail the request if email fails
+    }
+
     return NextResponse.json({ 
       success: true,
       data,
@@ -106,4 +124,18 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Helper function to get status message
+function getStatusMessage(status: string): string {
+  const statusMessages: Record<string, string> = {
+    'applied': 'Your application has been received and is being reviewed.',
+    'screening': 'Your application is currently under screening.',
+    'interview': 'You have been shortlisted for an interview!',
+    'selected': 'Congratulations! You have been selected.',
+    'rejected': 'Unfortunately, you were not selected for this position.',
+    'on_hold': 'Your application is currently on hold.',
+    'withdrawn': 'Your application has been withdrawn.'
+  }
+  return statusMessages[status] || 'Your application status has been updated.'
 }

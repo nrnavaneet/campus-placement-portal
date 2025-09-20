@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { useTheme } from "@/contexts/theme-context"
 import { supabaseClient, type StudentDetails, type Job, type GrievanceReport } from "@/lib/supabase"
+import { toast } from "sonner"
 import {
   Users,
   Briefcase,
@@ -59,7 +60,8 @@ export default function AdminDashboard() {
   const [filterBranch, setFilterBranch] = useState("all")
   const [filterJobStatus, setFilterJobStatus] = useState("all")
   const [selectedJobForExport, setSelectedJobForExport] = useState("all")
-  const [selectedCompanyForReport, setSelectedCompanyForReport] = useState("all")
+  const [selectedCompanyForReport, setSelectedCompanyForReport] = useState("")
+  const [isDownloadingData, setIsDownloadingData] = useState(false)
   const [isCompanyReportOpen, setIsCompanyReportOpen] = useState(false)
   const [companyReportData, setCompanyReportData] = useState<any[]>([])
   const [isAddJobOpen, setIsAddJobOpen] = useState(false)
@@ -272,7 +274,13 @@ export default function AdminDashboard() {
 
   const handleSignOut = () => {
     localStorage.removeItem("admin_session")
-    router.push("/")
+    toast.success("Signed out successfully", {
+      description: "You have been logged out of the admin panel",
+      duration: 2000,
+    })
+    setTimeout(() => {
+      router.push("/")
+    }, 500)
   }
 
   const generateUUID = (): string => {
@@ -289,35 +297,59 @@ export default function AdminDashboard() {
 
     // Enhanced validation
     if (!newJob.title?.trim()) {
-      setError("Job title is required")
+      toast.error("Job title is required", {
+        description: "Please enter a valid job title",
+        duration: 3000,
+      })
       return
     }
     if (!newJob.company_name?.trim()) {
-      setError("Company name is required")
+      toast.error("Company name is required", {
+        description: "Please enter the company name",
+        duration: 3000,
+      })
       return
     }
     if (!newJob.description?.trim()) {
-      setError("Job description is required")
+      toast.error("Job description is required", {
+        description: "Please provide a detailed job description",
+        duration: 3000,
+      })
       return
     }
     if (newJob.branches_allowed.length === 0) {
-      setError("Please select at least one eligible branch")
+      toast.error("Branch selection required", {
+        description: "Please select at least one eligible branch",
+        duration: 3000,
+      })
       return
     }
     if (!newJob.min_ug_percentage || Number.parseFloat(newJob.min_ug_percentage) <= 0) {
-      setError("Valid minimum UG percentage is required")
+      toast.error("Valid minimum UG percentage is required", {
+        description: "Please enter a percentage between 1-100",
+        duration: 3000,
+      })
       return
     }
     if (!newJob.package_min || Number.parseFloat(newJob.package_min) <= 0) {
-      setError("Valid minimum package is required")
+      toast.error("Valid minimum package is required", {
+        description: "Please enter a valid salary amount",
+        duration: 3000,
+      })
       return
     }
     if (!newJob.package_max || Number.parseFloat(newJob.package_max) <= 0) {
-      setError("Valid maximum package is required")
+      toast.error("Valid maximum package is required", {
+        description: "Please enter a valid salary amount",
+        duration: 3000,
+      })
       return
     }
     if (Number.parseFloat(newJob.package_min) > Number.parseFloat(newJob.package_max)) {
-      setError("Minimum package cannot be greater than maximum package")
+      toast.error("Invalid package range", {
+        description: "Minimum package cannot be greater than maximum package",
+        duration: 3000,
+      })
       return
     }
 
@@ -363,7 +395,10 @@ export default function AdminDashboard() {
 
       if (!response.ok) {
         console.error("API error:", result.error)
-        setError(`Failed to create job: ${result.error}`)
+        toast.error("Failed to create job", {
+          description: result.error || "Please check the job details and try again",
+          duration: 4000,
+        })
         return
       }
 
@@ -388,11 +423,17 @@ export default function AdminDashboard() {
       })
 
       setError(null)
-      setSuccess("Job posted successfully!")
+      toast.success("Job posted successfully!", {
+        description: `${jobData.title} at ${jobData.company_name} has been created`,
+        duration: 3000,
+      })
       fetchData() // Refresh data
     } catch (error: any) {
       console.error("Error adding job:", error)
-      setError(error.message || "Failed to create job")
+      toast.error("Failed to create job", {
+        description: error.message || "An unexpected error occurred. Please try again.",
+        duration: 4000,
+      })
     }
   }
 
@@ -557,30 +598,42 @@ export default function AdminDashboard() {
   }
 
   const exportStudentData = () => {
-    const csvContent = [
-      ["Name", "Registration No", "Email", "Branch", "Percentage", "Mobile", "Resume Status"].join(","),
-      ...students.map((student) =>
-        [
-          student.first_name,
-          student.college_reg_no,
-          student.college_email,
-          student.branch,
-          student.ug_percentage,
-          student.mobile_number,
-          student.resume_url ? "Uploaded" : "Not Uploaded",
-        ].join(","),
-      ),
-    ].join("\n")
+    try {
+      const csvContent = [
+        ["Name", "Registration No", "Email", "Branch", "Percentage", "Mobile", "Resume Status"].join(","),
+        ...students.map((student) =>
+          [
+            student.first_name,
+            student.college_reg_no,
+            student.college_email,
+            student.branch,
+            student.ug_percentage,
+            student.mobile_number,
+            student.resume_url ? "Uploaded" : "Not Uploaded",
+          ].join(","),
+        ),
+      ].join("\n")
 
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `students-data-${new Date().toISOString().split("T")[0]}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+      const blob = new Blob([csvContent], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `students-data-${new Date().toISOString().split("T")[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success("Student data exported successfully!", {
+        description: `Downloaded ${students.length} student records as CSV`,
+        duration: 3000,
+      })
+    } catch (error) {
+      toast.error("Failed to export student data", {
+        description: "Please try again or contact support",
+        duration: 4000,
+      })
+    }
   }
 
   // Student management handlers
@@ -647,45 +700,57 @@ export default function AdminDashboard() {
   }
 
   const exportJobData = () => {
-    let jobsToExport = jobs
-    if (selectedJobForExport !== "all") {
-      jobsToExport = jobs.filter((job) => job.id === selectedJobForExport)
-    }
+    try {
+      let jobsToExport = jobs
+      if (selectedJobForExport !== "all") {
+        jobsToExport = jobs.filter((job) => job.id === selectedJobForExport)
+      }
 
-    const csvContent = [
-      [
-        "Job Title",
-        "Company",
-        "Package Min",
-        "Package Max",
-        "Min Percentage",
-        "Status",
-        "Deadline",
-        "Eligible Branches",
-      ].join(","),
-      ...jobsToExport.map((job) =>
+      const csvContent = [
         [
-          job.title,
-          job.company_name,
-          job.package_min,
-          job.package_max,
-          job.min_ug_percentage,
-          job.status,
-          job.application_deadline,
-          job.branches_allowed.join("; "),
+          "Job Title",
+          "Company",
+          "Package Min",
+          "Package Max",
+          "Min Percentage",
+          "Status",
+          "Deadline",
+          "Eligible Branches",
         ].join(","),
-      ),
-    ].join("\n")
+        ...jobsToExport.map((job) =>
+          [
+            job.title,
+            job.company_name,
+            job.package_min,
+            job.package_max,
+            job.min_ug_percentage,
+            job.status,
+            job.application_deadline,
+            job.branches_allowed.join("; "),
+          ].join(","),
+        ),
+      ].join("\n")
 
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `jobs-data-${selectedJobForExport === "all" ? "all" : "selected"}-${new Date().toISOString().split("T")[0]}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+      const blob = new Blob([csvContent], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `jobs-data-${selectedJobForExport === "all" ? "all" : "selected"}-${new Date().toISOString().split("T")[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success("Job data exported successfully!", {
+        description: `Downloaded ${jobsToExport.length} job${jobsToExport.length === 1 ? '' : 's'} as CSV`,
+        duration: 3000,
+      })
+    } catch (error) {
+      toast.error("Failed to export job data", {
+        description: "Please try again or contact support",
+        duration: 4000,
+      })
+    }
   }
 
   const generatePlacementReport = () => {
@@ -747,11 +812,25 @@ ${reportData.companyWiseData
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+
+    toast.success("Placement report generated successfully!", {
+      description: `Report includes data for ${reportData.totalStudents} students and ${reportData.branchWiseData.length} branches`,
+      duration: 3000,
+    })
   }
 
   // Company-wise report generation
   const generateCompanyReport = async (company: string = "all") => {
     try {
+      // Validate company selection
+      if (!company || company === "") {
+        toast.error("Please select a company to generate report for", {
+          description: "Choose a specific company or 'All Companies' from the dropdown",
+          duration: 4000,
+        })
+        return
+      }
+
       const response = await fetch(`/api/admin/company-report?company=${encodeURIComponent(company)}`)
       if (!response.ok) {
         throw new Error('Failed to fetch company report')
@@ -761,7 +840,7 @@ ${reportData.companyWiseData
       setIsCompanyReportOpen(true)
     } catch (error) {
       console.error('Error generating company report:', error)
-      setError('Failed to generate company report')
+      toast.error('Failed to generate company report')
     }
   }
 
@@ -795,6 +874,74 @@ ${reportData.companyWiseData
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+  }
+
+  // Download student data with resumes as ZIP file
+  const downloadStudentDataWithResumes = async (company: string = "all") => {
+    if (isDownloadingData) return // Prevent multiple simultaneous downloads
+    
+    try {
+      // Validate company selection - ensure user has made a conscious choice
+      if (!company || company === "" || company === "select") {
+        toast.error("Please select a company to download data for", {
+          description: "Choose a specific company or 'All Companies' from the dropdown",
+          duration: 4000,
+        })
+        return
+      }
+
+      setIsDownloadingData(true)
+
+      const loadingToast = toast.loading(`Preparing download for ${company === "all" ? "all companies" : company}...`, {
+        description: "This may take a few moments while we gather student data and resumes",
+      })
+      
+      const response = await fetch(`/api/admin/download-student-data?company=${encodeURIComponent(company)}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        toast.dismiss(loadingToast)
+        toast.error(errorData.error || 'Failed to download student data')
+        return
+      }
+
+      // Get the blob from response
+      const blob = await response.blob()
+      
+      // Create download link
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `student_data_${company}_${new Date().toISOString().split('T')[0]}.zip`
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.dismiss(loadingToast)
+      toast.success("Download completed successfully!", {
+        description: `Student data and resumes for ${company === "all" ? "all companies" : company} downloaded`,
+        duration: 4000,
+      })
+      
+    } catch (error) {
+      console.error('Error downloading student data:', error)
+      toast.error((error as Error).message || 'Failed to download student data with resumes')
+    } finally {
+      setIsDownloadingData(false)
+    }
   }
 
   const filteredStudents = students.filter((student) => {
@@ -999,7 +1146,7 @@ ${reportData.companyWiseData
                   <CardTitle>Recent Activities</CardTitle>
                   <CardDescription>Latest system activities and updates</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                   {recentActivities.length > 0 ? (
                     recentActivities.map((activity, index) => (
                       <div
@@ -1237,7 +1384,7 @@ ${reportData.companyWiseData
                         <SelectItem value="all">All Jobs</SelectItem>
                         {jobs.map((job) => (
                           <SelectItem key={job.id} value={job.id}>
-                            {job.company_name} - {job.title}
+                            {job.company_name.length > 10 ? job.company_name.substring(0, 10) + '...' : job.company_name} - {job.title.length > 15 ? job.title.substring(0, 15) + '...' : job.title}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2019,14 +2166,14 @@ ${reportData.companyWiseData
                   <div className="mt-1">
                     {selectedStudent.resume_url ? (
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Uploaded
-                        </Badge>
                         <Button variant="outline" size="sm" onClick={() => handleDownloadResume(selectedStudent)}>
                           <Download className="w-4 h-4 mr-2" />
                           Download
                         </Button>
+                        <Badge className="bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Uploaded
+                        </Badge>
                       </div>
                     ) : (
                       <Badge className="bg-red-100 text-red-800">
@@ -2166,14 +2313,24 @@ ${reportData.companyWiseData
                 <span className="text-sm text-gray-600">
                   Total Records: {companyReportData.length}
                 </span>
-                <Button 
-                  variant="outline" 
-                  onClick={() => exportCompanyReport(selectedCompanyForReport)}
-                  size="sm"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => exportCompanyReport(selectedCompanyForReport)}
+                    size="sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
+                    size="sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Student Data + Resumes
+                  </Button>
+                </div>
               </div>
 
               <div className="overflow-x-auto max-h-96">
@@ -2227,7 +2384,25 @@ ${reportData.companyWiseData
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <Button 
+                  onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
+                  variant="default"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isDownloadingData}
+                >
+                  {isDownloadingData ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Preparing...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Student Data & Resumes
+                    </>
+                  )}
+                </Button>
                 <Button variant="outline" onClick={() => setIsCompanyReportOpen(false)}>
                   Close
                 </Button>

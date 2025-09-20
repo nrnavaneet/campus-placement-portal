@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Update placement status based on the new status
     let updatedPlacementStatus = { ...currentStudent.placement_status }
+    const wasPlaced = updatedPlacementStatus.accepted_offers > 0
 
     if (status === 'placed') {
       updatedPlacementStatus.accepted_offers = Math.max(1, updatedPlacementStatus.accepted_offers || 0)
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest) {
       updatedPlacementStatus.interviews_attended = (updatedPlacementStatus.interviews_attended || 0) + 1
     } else if (status === 'rejected') {
       updatedPlacementStatus.rejections = (updatedPlacementStatus.rejections || 0) + 1
+    } else if (status === 'active' && wasPlaced) {
+      // If removing from placed status, reset placement data
+      updatedPlacementStatus.accepted_offers = 0
+      updatedPlacementStatus.max_ctc = 0
     }
 
     // Update the student record
@@ -62,21 +67,25 @@ export async function POST(request: NextRequest) {
     const activityDescription = company 
       ? `Student ${currentStudent.first_name} status updated to ${status} at ${company}${package_amount ? ` (₹${package_amount})` : ''}`
       : `Student ${currentStudent.first_name} status updated to ${status}`
+    
+    const activityDetails = {
+      student_id,
+      student_name: currentStudent.first_name,
+      previous_status: currentStudent.placement_status,
+      new_status: status,
+      company,
+      package_amount,
+      notes,
+      was_placed: wasPlaced,
+      is_now_placed: status === 'placed'
+    }
 
     const { error: activityError } = await supabaseAdmin
       .from('recent_activities')
       .insert({
         activity_type: 'student_update',
         description: activityDescription,
-        details: {
-          student_id,
-          student_name: currentStudent.first_name,
-          previous_status: currentStudent.placement_status,
-          new_status: status,
-          company,
-          package_amount,
-          notes
-        }
+        details: activityDetails
       })
 
     if (activityError) {

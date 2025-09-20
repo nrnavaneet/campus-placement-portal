@@ -1,17 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Navbar } from "@/components/layout/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { AlertCircle, CheckCircle, Send } from "lucide-react"
+import { AlertCircle, CheckCircle, Send, Plus, ArrowLeft, Clock, MessageSquare } from "lucide-react"
+import { StudentDetails } from "@/lib/supabase"
+
+interface Grievance {
+  id: string
+  student_reg_no: string
+  student_name: string
+  issue_type: string
+  message: string
+  contact_email: string
+  status: string
+  created_at: string
+  resolved_at?: string
+  admin_response?: string
+}
 
 export default function GrievancePage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [student, setStudent] = useState<StudentDetails | null>(null)
+  const [grievances, setGrievances] = useState<Grievance[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [loadingGrievances, setLoadingGrievances] = useState(true)
   const [formData, setFormData] = useState({
     studentRegNo: "",
     studentName: "",
@@ -23,18 +43,105 @@ export default function GrievancePage() {
   const issueTypes = [
     "Academic Issues",
     "Placement Process",
-    "Infrastructure",
+    "Infrastructure", 
     "Faculty Related",
     "Administrative Issues",
     "Technical Issues",
     "Other"
   ]
 
+  const statusColors = {
+    'submitted': 'bg-blue-500',
+    'in_review': 'bg-yellow-500',
+    'resolved': 'bg-green-500',
+    'closed': 'bg-gray-500'
+  }
+
+  const statusLabels = {
+    'submitted': 'Submitted',
+    'in_review': 'In Review',
+    'resolved': 'Resolved', 
+    'closed': 'Closed'
+  }
+
+  useEffect(() => {
+    fetchStudentData()
+    fetchGrievances()
+  }, [])
+
+  const fetchStudentData = async () => {
+    try {
+      // Try localStorage first (demo mode)
+      const storedProfile = localStorage.getItem("student_profile")
+      if (storedProfile) {
+        const studentData = JSON.parse(storedProfile)
+        setStudent(studentData)
+        setFormData(prev => ({
+          ...prev,
+          studentRegNo: studentData.college_reg_no || "",
+          studentName: studentData.first_name || "",
+          contactEmail: studentData.college_email || studentData.personal_email || "",
+        }))
+      } else {
+        // Try API fallback
+        const studentEmail = "22etcs002132@msruas.ac.in"
+        const response = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+        
+        if (response.ok) {
+          const result = await response.json()
+          const studentData = result.data
+          setStudent(studentData)
+          setFormData(prev => ({
+            ...prev,
+            studentRegNo: studentData.college_reg_no || "",
+            studentName: studentData.first_name || "",
+            contactEmail: studentData.college_email || studentData.personal_email || "",
+          }))
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching student data:", error)
+    }
+  }
+
+  const fetchGrievances = async () => {
+    try {
+      setLoadingGrievances(true)
+      // Get from localStorage first if available
+      const storedProfile = localStorage.getItem("student_profile")
+      let regNo = ""
+      
+      if (storedProfile) {
+        const studentData = JSON.parse(storedProfile)
+        regNo = studentData.college_reg_no
+      } else {
+        // Use default for demo
+        regNo = "22ETCS002132"
+      }
+
+      if (regNo) {
+        const response = await fetch(`/api/grievance?student_reg_no=${encodeURIComponent(regNo)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setGrievances(data)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching grievances:", error)
+      toast.error("Failed to load grievances")
+    } finally {
+      setLoadingGrievances(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔄 Starting grievance submission...')
+    console.log('📝 Form data:', formData)
     setIsLoading(true)
 
     try {
+      console.log('📡 Sending API request...')
       const response = await fetch("/api/grievance", {
         method: "POST",
         headers: {
@@ -43,24 +150,30 @@ export default function GrievancePage() {
         body: JSON.stringify(formData),
       })
 
+      console.log('📨 API response status:', response.status)
+      
       if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Success response:', result)
         toast.success("Grievance submitted successfully! We'll get back to you soon.")
-        setFormData({
-          studentRegNo: "",
-          studentName: "",
+        setFormData(prev => ({
+          ...prev,
           issueType: "",
           message: "",
-          contactEmail: "",
-        })
+        }))
+        setShowForm(false)
+        fetchGrievances() // Refresh the list
       } else {
         const error = await response.json()
+        console.error('❌ Error response:', error)
         toast.error(error.error || "Failed to submit grievance")
       }
     } catch (error) {
-      console.error("Error submitting grievance:", error)
+      console.error("❌ Fetch error:", error)
       toast.error("Failed to submit grievance")
     } finally {
       setIsLoading(false)
+      console.log('🏁 Grievance submission completed')
     }
   }
 
@@ -68,126 +181,260 @@ export default function GrievancePage() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Submit Grievance</h1>
-          <p className="text-muted-foreground">
-            Have an issue or concern? Let us know and we'll help resolve it.
-          </p>
-        </div>
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Grievance Form
-            </CardTitle>
-            <CardDescription>
-              Please provide detailed information about your issue. All submissions are confidential and will be reviewed by our administration team.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="studentRegNo">Registration Number *</Label>
-                  <Input
-                    id="studentRegNo"
-                    placeholder="e.g., 2021CS001"
-                    value={formData.studentRegNo}
-                    onChange={(e) => handleInputChange("studentRegNo", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="studentName">Full Name *</Label>
-                  <Input
-                    id="studentName"
-                    placeholder="Your full name"
-                    value={formData.studentName}
-                    onChange={(e) => handleInputChange("studentName", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="issueType">Issue Type *</Label>
-                  <Select onValueChange={(value) => handleInputChange("issueType", value)} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select issue type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {issueTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Email *</Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={formData.contactEmail}
-                    onChange={(e) => handleInputChange("contactEmail", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="message">Issue Description *</Label>
-                <Textarea
-                  id="message"
-                  placeholder="Please provide detailed information about your issue or concern..."
-                  value={formData.message}
-                  onChange={(e) => handleInputChange("message", e.target.value)}
-                  required
-                  rows={6}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Please be as specific as possible to help us understand and resolve your issue quickly.
+  if (showForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+        <Navbar />
+        <div className="container mx-auto py-8 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="mb-8">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowForm(false)}
+                className="mb-4 hover:bg-white/20 dark:hover:bg-white/10"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Grievances
+              </Button>
+              <div className="text-center">
+                <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Submit New Grievance
+                </h1>
+                <p className="text-slate-600 dark:text-slate-300">
+                  Have an issue or concern? Let us know and we'll help resolve it.
                 </p>
               </div>
+            </div>
 
-              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <p className="font-medium mb-1">What happens next?</p>
-                    <ul className="space-y-1 text-xs">
-                      <li>• Your grievance will be reviewed within 24 hours</li>
-                      <li>• You'll receive email updates on the status</li>
-                      <li>• You can track progress in your dashboard</li>
-                      <li>• Our team will work to resolve issues promptly</li>
-                    </ul>
+            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                  <AlertCircle className="w-5 h-5" />
+                  Grievance Form
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-300">
+                  Please provide detailed information about your issue. All submissions are confidential and will be reviewed by our administration team.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="studentRegNo" className="text-slate-700 dark:text-slate-200">Registration Number *</Label>
+                      <Input
+                        id="studentRegNo"
+                        placeholder="e.g., 2021CS001"
+                        value={formData.studentRegNo}
+                        onChange={(e) => handleInputChange("studentRegNo", e.target.value)}
+                        required
+                        disabled
+                        className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="studentName" className="text-slate-700 dark:text-slate-200">Full Name *</Label>
+                      <Input
+                        id="studentName"
+                        placeholder="Your full name"
+                        value={formData.studentName}
+                        onChange={(e) => handleInputChange("studentName", e.target.value)}
+                        required
+                        disabled
+                        className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200"
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Submit Grievance
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="issueType" className="text-slate-700 dark:text-slate-200">Issue Type *</Label>
+                      <Select onValueChange={(value) => handleInputChange("issueType", value)} required>
+                        <SelectTrigger className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200">
+                          <SelectValue placeholder="Select issue type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600">
+                          {issueTypes.map((type) => (
+                            <SelectItem key={type} value={type} className="text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contactEmail" className="text-slate-700 dark:text-slate-200">Contact Email *</Label>
+                      <Input
+                        id="contactEmail"
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={formData.contactEmail}
+                        onChange={(e) => handleInputChange("contactEmail", e.target.value)}
+                        required
+                        disabled
+                        className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="message" className="text-slate-700 dark:text-slate-200">Issue Description *</Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Please provide detailed information about your issue or concern..."
+                      value={formData.message}
+                      onChange={(e) => handleInputChange("message", e.target.value)}
+                      required
+                      rows={6}
+                      className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-400"
+                    />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Please be as specific as possible to help us understand and resolve your issue quickly.
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div className="text-sm text-blue-800 dark:text-blue-200">
+                        <p className="font-medium mb-1">What happens next?</p>
+                        <ul className="space-y-1 text-xs">
+                          <li>• Your grievance will be reviewed within 24 hours</li>
+                          <li>• You'll receive email updates on the status</li>
+                          <li>• You can track progress in your dashboard</li>
+                          <li>• Our team will work to resolve issues promptly</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Submit Grievance
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+      <Navbar />
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                My Grievances
+              </h1>
+              <p className="text-slate-600 dark:text-slate-300">
+                Track your submitted grievances and their resolution status
+              </p>
+            </div>
+            <Button 
+              onClick={() => setShowForm(true)} 
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Submit New Grievance
+            </Button>
+          </div>
+
+          {loadingGrievances ? (
+            <div className="grid gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse border-0 shadow-lg bg-white/80 dark:bg-slate-800/80">
+                  <CardContent className="p-6">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-600 rounded w-1/4 mb-4"></div>
+                    <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full mb-2"></div>
+                    <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-3/4"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : grievances.length === 0 ? (
+            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <CardContent className="text-center py-12">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-slate-400 dark:text-slate-500" />
+                <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">No grievances submitted</h3>
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
+                  You haven't submitted any grievances yet. If you have any issues or concerns, feel free to submit a new grievance.
+                </p>
+                <Button 
+                  onClick={() => setShowForm(true)} 
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Submit Your First Grievance
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {grievances.map((grievance) => (
+                <Card key={grievance.id} className="hover:shadow-xl transition-all duration-200 border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-200">{grievance.issue_type}</h3>
+                          <Badge 
+                            className={`${statusColors[grievance.status as keyof typeof statusColors]} text-white border-0`}
+                          >
+                            {statusLabels[grievance.status as keyof typeof statusLabels] || grievance.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-3">
+                          <Clock className="w-4 h-4" />
+                          Submitted on {formatDate(grievance.created_at)}
+                        </p>
+                        <p className="text-slate-700 dark:text-slate-300 mb-3 line-clamp-3">
+                          {grievance.message}
+                        </p>
+                        {grievance.admin_response && (
+                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-3 mt-3">
+                            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                              Admin Response:
+                            </p>
+                            <p className="text-sm text-green-700 dark:text-green-300">
+                              {grievance.admin_response}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

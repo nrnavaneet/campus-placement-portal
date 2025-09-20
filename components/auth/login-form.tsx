@@ -108,7 +108,7 @@ export function LoginForm() {
 
       if (data.user) {
         if (data.user.email_confirmed_at) {
-          // Email already confirmed (demo mode)
+          // Email already confirmed
           setSuccess("Registration successful! Redirecting to complete your profile...")
           setTimeout(() => {
             router.push("/register")
@@ -135,27 +135,45 @@ export function LoginForm() {
     const password = formData.get("password") as string
 
     try {
-      // For demo purposes, use hardcoded admin credentials
-      if (username === "admin" && password === "admin123") {
-        // Store admin session in localStorage
+      // Admin authentication - replace with your actual authentication logic
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: username,
+        password: password,
+      })
+
+      if (error) throw error
+
+      if (data.user) {
+        // Verify admin role from user metadata or admin table
+        // This should be replaced with proper role-based authentication
+        const { data: adminData, error: adminError } = await supabaseClient
+          .from('admin_users')
+          .select('*')
+          .eq('email', data.user.email)
+          .single()
+
+        if (adminError || !adminData) {
+          throw new Error("Access denied. Admin privileges required.")
+        }
+
+        // Store admin session
         localStorage.setItem(
           "admin_session",
           JSON.stringify({
-            id: "admin-1",
-            username: "admin",
+            id: adminData.id,
+            username: adminData.username || adminData.email,
             role: "admin",
             loginTime: new Date().toISOString(),
           }),
         )
+        
         setSuccess("Admin login successful! Redirecting...")
         setTimeout(() => {
           router.push("/admin")
         }, 1000)
-      } else {
-        throw new Error("Invalid admin credentials. Use: admin / admin123")
       }
     } catch (error: any) {
-      setError(error.message || "Admin login failed. Please try again.")
+      setError(error.message || "Admin login failed. Please check your credentials.")
     } finally {
       setIsLoading(false)
     }
@@ -338,18 +356,6 @@ export function LoginForm() {
               <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
             </Alert>
           )}
-
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Demo Credentials:</h4>
-            <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-              <p>
-                <strong>Student:</strong> 22demo001@msruas.ac.in / password123
-              </p>
-              <p>
-                <strong>Admin:</strong> admin / admin123
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

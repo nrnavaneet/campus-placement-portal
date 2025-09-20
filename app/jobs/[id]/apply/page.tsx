@@ -61,45 +61,44 @@ export default function JobApplicationPage() {
       }
       setJob(jobData)
 
-      // Fetch student profile from API
+      // Fetch student profile from localStorage first, then try API as fallback
       try {
-        const studentEmail = "22etcs002132@msruas.ac.in" // Default for demo
-        const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+        const storedProfile = localStorage.getItem("student_profile")
+        let studentData = null
         
-        if (studentResponse.ok) {
-          const studentResult = await studentResponse.json()
-          const studentData = studentResult.data
+        if (storedProfile) {
+          studentData = JSON.parse(storedProfile)
+          console.log('Using student data from localStorage:', studentData)
+        } else {
+          // Try API with a test email (only for demo)
+          const studentEmail = "22etcs002132@msruas.ac.in"
+          const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+          
+          if (studentResponse.ok) {
+            const studentResult = await studentResponse.json()
+            studentData = studentResult.data
+            console.log('Using student data from API:', studentData)
+          }
+        }
+        
+        if (studentData) {
           setStudent(studentData)
           checkEligibility(jobData, studentData)
           
           // Check if already applied using API
           checkExistingApplication(studentData.college_reg_no)
         } else {
-          // Fallback to localStorage if API fails
-          const storedProfile = localStorage.getItem("student_profile")
-          if (storedProfile) {
-            const studentData = JSON.parse(storedProfile)
-            setStudent(studentData)
-            checkEligibility(jobData, studentData)
-            checkExistingApplication(studentData.college_reg_no)
-          } else {
-            router.push("/profile")
-            return
-          }
-        }
-      } catch (studentError) {
-        console.error("Error fetching student profile:", studentError)
-        // Fallback to localStorage
-        const storedProfile = localStorage.getItem("student_profile")
-        if (storedProfile) {
-          const studentData = JSON.parse(storedProfile)
-          setStudent(studentData)
-          checkEligibility(jobData, studentData)
-          checkExistingApplication(studentData.college_reg_no)
-        } else {
-          router.push("/profile")
+          console.error('No student data available')
+          alert('Please complete your profile registration first')
+          router.push('/register')
           return
         }
+        
+      } catch (studentError) {
+        console.error('Error fetching student data:', studentError)
+        alert('Please complete your profile registration first')
+        router.push('/register')
+        return
       }
 
     } catch (error) {
@@ -112,7 +111,7 @@ export default function JobApplicationPage() {
 
   const checkExistingApplication = async (studentRegNo: string) => {
     try {
-      const response = await fetch(`/api/student/applications?student_id=${studentRegNo}`)
+      const response = await fetch(`/api/student/applications?student_id=${encodeURIComponent(studentRegNo)}`)
       if (response.ok) {
         const data = await response.json()
         const existingApp = data.data?.find((app: any) => app.job_id === jobId)
@@ -157,7 +156,7 @@ export default function JobApplicationPage() {
     setEligibilityCheck({ eligible, reasons })
   }
 
-    const handleApply = async () => {
+  const handleApply = async () => {
     if (!student || !job) return
 
     setIsApplying(true)
@@ -177,6 +176,7 @@ export default function JobApplicationPage() {
       if (response.ok) {
         // Application successful
         setHasApplied(true)
+        alert('Application submitted successfully!')
         
         // Show success message and redirect
         setTimeout(() => {
@@ -199,37 +199,30 @@ export default function JobApplicationPage() {
     }
   }
 
-  const formatSalary = (min: number, max: number) => {
-    const formatAmount = (amount: number) => {
-      if (amount >= 100000) {
-        return `₹${(amount / 100000).toFixed(1)}L`
-      }
-      return `₹${(amount / 1000).toFixed(0)}K`
-    }
-    return `${formatAmount(min)} - ${formatAmount(max)}`
+  const canApply = () => {
+    return (
+      eligibilityCheck.eligible &&
+      !hasApplied &&
+      confirmations.eligibility &&
+      confirmations.documents &&
+      confirmations.terms
+    )
   }
 
-  const getTimeRemaining = (deadline: string) => {
-    const now = new Date()
-    const deadlineDate = new Date(deadline)
-    const diff = deadlineDate.getTime() - now.getTime()
-
-    if (diff <= 0) return "Expired"
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-    if (days > 0) return `${days} days left`
-    if (hours > 0) return `${hours} hours left`
-    return "Less than 1 hour left"
+  const handleConfirmationChange = (key: keyof typeof confirmations) => {
+    setConfirmations((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading job details...</div>
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-6"></div>
+            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
         </div>
       </div>
     )
@@ -237,294 +230,276 @@ export default function JobApplicationPage() {
 
   if (!job) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Job not found</div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Job Not Found</h1>
+            <Button onClick={() => router.push("/jobs")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Jobs
+            </Button>
+          </div>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <Navbar />
+  const formatCurrency = (amount: number) => {
+    return `₹${(amount / 100000).toFixed(1)}L`
+  }
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "Not specified"
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+          <Button variant="ghost" onClick={() => router.push("/jobs")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Jobs
           </Button>
-
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            Apply for {job.title}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">Review the job details and submit your application</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Job Details */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                      <Building className="w-8 h-8 text-white" />
+                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                      {job.company_name.charAt(0)}
                     </div>
                     <div>
                       <CardTitle className="text-2xl">{job.title}</CardTitle>
-                      <CardDescription className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                      <CardDescription className="text-lg flex items-center">
+                        <Building className="w-4 h-4 mr-2" />
                         {job.company_name}
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                  <Badge 
+                    variant={job.status === 'active' ? 'default' : 'secondary'}
+                    className="capitalize"
+                  >
+                    {job.status}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <h3 className="font-semibold mb-2">Job Description</h3>
-                  <p className="text-gray-600 dark:text-gray-300">{job.description}</p>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
                     <IndianRupee className="w-5 h-5 text-green-600" />
                     <div>
-                      <p className="text-sm text-gray-500">Package</p>
-                      <p className="font-medium">{formatSalary(job.package_min, job.package_max)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Min Percentage</p>
-                      <p className="font-medium">{job.min_ug_percentage}%</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Eligible Branches</p>
-                      <p className="font-medium">{job.branches_allowed.length}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-orange-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Deadline</p>
-                      <p className="font-medium">{getTimeRemaining(job.application_deadline)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">Eligible Branches</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {job.branches_allowed.map((branch) => (
-                      <Badge key={branch} variant="outline">
-                        {branch}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">Selection Timeline</h3>
-                  <div className="space-y-3">
-                    {job.timeline.map((stage, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-blue-600">{index + 1}</span>
-                        </div>
-                        <div>
-                          <p className="font-medium">{stage.stage}</p>
-                          <p className="text-sm text-gray-500">{stage.description}</p>
-                          {stage.date && (
-                            <p className="text-xs text-gray-400">
-                              <Calendar className="w-3 h-3 inline mr-1" />
-                              {new Date(stage.date).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
+                      <div className="font-semibold">Package</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {job.package_min && job.package_max
+                          ? `${formatCurrency(job.package_min)} - ${formatCurrency(job.package_max)}`
+                          : "Not disclosed"}
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <div className="font-semibold">Application Deadline</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(job.application_deadline)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <div className="font-semibold">Min Percentage</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {job.min_ug_percentage}%
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-orange-600" />
+                    <div>
+                      <div className="font-semibold">Eligible Branches</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {job.branches_allowed.join(", ")}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Application Panel */}
-          <div className="space-y-6">
-            {/* Eligibility Check */}
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {eligibilityCheck.eligible ? (
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-red-600" />
-                  )}
-                  Eligibility Check
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {eligibilityCheck.eligible ? (
-                  <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription className="text-green-800 dark:text-green-200">
-                      You are eligible to apply for this position!
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                <div>
+                  <h3 className="font-semibold mb-2">Job Description</h3>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {job.description}
+                  </p>
+                </div>
+
+                {job.no_backlogs_required && (
+                  <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-red-800 dark:text-red-200">
-                      <div className="space-y-1">
-                        <p className="font-medium">You are not eligible due to:</p>
-                        <ul className="list-disc list-inside text-sm">
-                          {eligibilityCheck.reasons.map((reason, index) => (
-                            <li key={index}>{reason}</li>
-                          ))}
-                        </ul>
-                      </div>
+                    <AlertDescription>
+                      This position requires no active backlogs.
                     </AlertDescription>
                   </Alert>
                 )}
               </CardContent>
             </Card>
 
-            {/* Application Form */}
-            {eligibilityCheck.eligible && !hasApplied && (
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            {/* Timeline */}
+            {job.timeline && job.timeline.length > 0 && (
+              <Card>
                 <CardHeader>
-                  <CardTitle>Submit Application</CardTitle>
-                  <CardDescription>Confirm the requirements before applying</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Selection Process
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="eligibility"
-                        checked={confirmations.eligibility}
-                        onCheckedChange={(checked) =>
-                          setConfirmations({ ...confirmations, eligibility: checked as boolean })
-                        }
-                      />
-                      <label htmlFor="eligibility" className="text-sm">
-                        I confirm that I meet all eligibility criteria
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="documents"
-                        checked={confirmations.documents}
-                        onCheckedChange={(checked) =>
-                          setConfirmations({ ...confirmations, documents: checked as boolean })
-                        }
-                      />
-                      <label htmlFor="documents" className="text-sm">
-                        I have uploaded all required documents including resume
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="terms"
-                        checked={confirmations.terms}
-                        onCheckedChange={(checked) => setConfirmations({ ...confirmations, terms: checked as boolean })}
-                      />
-                      <label htmlFor="terms" className="text-sm">
-                        I agree to the terms and conditions of the application process
-                      </label>
-                    </div>
+                <CardContent>
+                  <div className="space-y-4">
+                    {job.timeline.map((step: any, index: number) => (
+                      <div key={index} className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{step.stage}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {step.description}
+                          </div>
+                          {step.date && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500">
+                              {formatDate(step.date)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  <Button
-                    onClick={handleApply}
-                    disabled={
-                      isApplying || !confirmations.eligibility || !confirmations.documents || !confirmations.terms
-                    }
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    {isApplying ? "Submitting Application..." : "Submit Application"}
-                  </Button>
                 </CardContent>
               </Card>
             )}
+          </div>
 
-            {/* Already Applied */}
-            {hasApplied && (
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardContent className="pt-6">
-                  <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription className="text-blue-800 dark:text-blue-200">
-                      <div className="space-y-2">
-                        <p className="font-medium">Application Submitted!</p>
-                        <p className="text-sm">
-                          You have already applied for this position. You can track your application status in the
-                          Applications section.
-                        </p>
+          {/* Application Panel */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Application Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Eligibility Check */}
+                <div>
+                  <h4 className="font-semibold mb-2">Eligibility Check</h4>
+                  {eligibilityCheck.eligible ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm">You are eligible for this position</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm">Eligibility requirements not met</span>
                       </div>
+                      <ul className="text-sm text-red-600 ml-6 space-y-1">
+                        {eligibilityCheck.reasons.map((reason, index) => (
+                          <li key={index} className="list-disc">{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Application Status */}
+                {hasApplied ? (
+                  <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      You have already applied for this position. Check your applications page for updates.
                     </AlertDescription>
                   </Alert>
-                  <Button onClick={() => router.push("/applications")} className="w-full mt-4" variant="outline">
-                    <FileText className="w-4 h-4 mr-2" />
-                    View Application Status
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                ) : eligibilityCheck.eligible ? (
+                  <div className="space-y-4">
+                    {/* Confirmations */}
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="eligibility"
+                          checked={confirmations.eligibility}
+                          onCheckedChange={() => handleConfirmationChange('eligibility')}
+                        />
+                        <label htmlFor="eligibility" className="text-sm leading-relaxed">
+                          I confirm that I meet all eligibility criteria for this position
+                        </label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="documents"
+                          checked={confirmations.documents}
+                          onCheckedChange={() => handleConfirmationChange('documents')}
+                        />
+                        <label htmlFor="documents" className="text-sm leading-relaxed">
+                          I have uploaded my updated resume and all required documents
+                        </label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="terms"
+                          checked={confirmations.terms}
+                          onCheckedChange={() => handleConfirmationChange('terms')}
+                        />
+                        <label htmlFor="terms" className="text-sm leading-relaxed">
+                          I agree to the terms and conditions of the placement process
+                        </label>
+                      </div>
+                    </div>
 
-            {/* Student Profile Summary */}
-            {student && (
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle>Your Profile</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Name:</span>
-                    <span className="text-sm font-medium">{student.first_name}</span>
+                    <Button 
+                      onClick={handleApply}
+                      disabled={!canApply() || isApplying}
+                      className="w-full"
+                    >
+                      {isApplying ? "Submitting..." : "Submit Application"}
+                    </Button>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Registration:</span>
-                    <span className="text-sm font-medium">{student.college_reg_no}</span>
+                ) : (
+                  <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800 dark:text-red-200">
+                      You are not eligible to apply for this position. Please check the requirements above.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Student Info */}
+                {student && (
+                  <div className="mt-6 pt-4 border-t">
+                    <h4 className="font-semibold mb-2">Your Profile</h4>
+                    <div className="text-sm space-y-1">
+                      <div><strong>Name:</strong> {student.first_name}</div>
+                      <div><strong>Reg No:</strong> {student.college_reg_no}</div>
+                      <div><strong>Branch:</strong> {student.branch}</div>
+                      <div><strong>Percentage:</strong> {student.ug_percentage}%</div>
+                      <div><strong>Active Backlogs:</strong> {student.active_backlogs ? "Yes" : "No"}</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Branch:</span>
-                    <span className="text-sm font-medium">{student.branch}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Percentage:</span>
-                    <span className="text-sm font-medium">{student.ug_percentage}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Resume:</span>
-                    <span className="text-sm font-medium">
-                      {student.resume_url ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Uploaded
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-red-100 text-red-800">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Missing
-                        </Badge>
-                      )}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

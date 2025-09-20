@@ -127,7 +127,8 @@ export default function JobsPage() {
 
   const filterJobs = () => {
     if (!studentProfile) {
-      setFilteredJobs(jobs.filter(job => job.status === "active" || job.status === "upcoming"))
+      // Show all jobs regardless of status
+      setFilteredJobs(jobs)
       return
     }
 
@@ -138,9 +139,9 @@ export default function JobsPage() {
         // Get applied job IDs to exclude them from eligible jobs
         const appliedJobIds = applicationData.map(app => app.job_id)
         filtered = jobs.filter(job => 
-          (job.status === "active" || job.status === "upcoming") &&
+          (job.status === "active" || job.status === "upcoming") && // Not expired or closed
           isEligibleForJob(job, studentProfile) &&
-          !appliedJobIds.includes(job.id) // Exclude applied jobs
+          !appliedJobIds.includes(job.id) // Not applied
         )
         break
       case "applied":
@@ -148,27 +149,15 @@ export default function JobsPage() {
         const studentAppliedJobIds = applicationData.map(app => app.job_id)
         filtered = jobs.filter(job => studentAppliedJobIds.includes(job.id))
         break
-      case "deadline":
-        // Get applied job IDs to exclude them from deadline jobs
-        const deadlineAppliedJobIds = applicationData.map(app => app.job_id)
-        filtered = jobs.filter(job => {
-          if (!job.application_deadline) return false
-          const deadline = new Date(job.application_deadline)
-          const today = new Date()
-          const diffTime = deadline.getTime() - today.getTime()
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          return diffDays <= 7 && diffDays > 0 && 
-                 (job.status === "active" || job.status === "upcoming") &&
-                 !deadlineAppliedJobIds.includes(job.id) // Exclude applied jobs
-        })
+      case "closed":
+        // Show expired and closed jobs
+        filtered = jobs.filter(job => 
+          job.status === "closed"
+        )
         break
       default:
-        // All Jobs - exclude applied jobs
-        const allJobsAppliedIds = applicationData.map(app => app.job_id)
-        filtered = jobs.filter(job => 
-          (job.status === "active" || job.status === "upcoming") &&
-          !allJobsAppliedIds.includes(job.id) // Exclude applied jobs
-        )
+        // All Jobs - show ALL jobs regardless of status or application state
+        filtered = jobs
     }
 
     setFilteredJobs(filtered)
@@ -240,7 +229,7 @@ export default function JobsPage() {
             <TabsTrigger value="all">All Jobs</TabsTrigger>
             <TabsTrigger value="eligible">Eligible</TabsTrigger>
             <TabsTrigger value="applied">Applied</TabsTrigger>
-            <TabsTrigger value="deadline">Ending Soon</TabsTrigger>
+            <TabsTrigger value="closed">Closed</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-6">
@@ -508,8 +497,8 @@ export default function JobsPage() {
                     ? "No jobs match your eligibility criteria."
                     : activeTab === "applied"
                     ? "You haven't applied to any jobs yet."
-                    : activeTab === "deadline"
-                    ? "No jobs are ending soon."
+                    : activeTab === "closed"
+                    ? "No closed jobs found."
                     : "No active jobs available at the moment."
                   }
                 </p>

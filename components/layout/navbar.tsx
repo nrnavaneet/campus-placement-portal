@@ -192,8 +192,8 @@ export function Navbar() {
                 {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-full flex items-center justify-center shadow-lg">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                      <div className="w-full h-full bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20">
                         <span className="text-white font-semibold text-sm">
                           {student?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                         </span>

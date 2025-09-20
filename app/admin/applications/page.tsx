@@ -99,10 +99,10 @@ export default function AdminApplicationsPage() {
     try {
       const response = await fetch('/api/admin/jobs')
       if (response.ok) {
-        const data = await response.json()
-        setJobs(data.jobs || [])
-        if (data.jobs?.length > 0) {
-          setSelectedJob(data.jobs[0].id)
+        const result = await response.json()
+        setJobs(result.data || []) // API returns { data: [...] }
+        if (result.data?.length > 0) {
+          setSelectedJob(result.data[0].id)
         }
       }
     } catch (error) {

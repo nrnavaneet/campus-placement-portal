@@ -24,7 +24,7 @@ async function sendApplicationNotification(applicationId: string, jobId: string,
     console.log(`📧 Sending application notification for student: ${student.first_name}`)
     
     // Call our notification API
-    const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/api/notifications/application`, {
+    const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/application`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

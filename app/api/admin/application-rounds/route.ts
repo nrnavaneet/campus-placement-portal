@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendAdminApplicationStatusUpdate } from '@/lib/notification-service'
 
 // Create admin client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Send notification to student about status update
+    // Send notification to student about round status update
     try {
       const { data: roundInfo } = await supabaseAdmin
         .from('job_rounds')
@@ -149,23 +150,26 @@ export async function POST(request: NextRequest) {
         .eq('id', job_round_id)
         .single()
 
-      if (roundInfo) {
-        await fetch('/api/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            studentId: application.student_reg_no,
-            type: 'round_status_update',
-            message: `Your ${roundInfo.round_name} status has been updated to: ${status}`,
-            subject: `Round Update: ${application.company_name}`,
-            jobTitle: 'Job Application',
-            companyName: application.company_name,
-            status
-          })
+      const { data: jobInfo } = await supabaseAdmin
+        .from('jobs')
+        .select('title, company_name')
+        .eq('id', application.job_id)
+        .single()
+
+      if (roundInfo && jobInfo) {
+        await sendAdminApplicationStatusUpdate({
+          studentRegNo: application.student_reg_no,
+          studentName: 'Student', // We'll need to fetch this if needed
+          jobTitle: jobInfo.title,
+          companyName: jobInfo.company_name,
+          applicationId: application_id,
+          newStatus: status,
+          statusMessage: `Your ${roundInfo.round_name} round status has been updated to: ${status.replace('_', ' ')}`,
+          notes: notes || ''
         })
       }
     } catch (notificationError) {
-      console.error('Notification error:', notificationError)
+      console.error('Failed to send round status notification:', notificationError)
       // Don't fail the request if notification fails
     }
 
