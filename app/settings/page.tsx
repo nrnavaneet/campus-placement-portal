@@ -30,13 +30,13 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+  const [passwordSuccess, setPasswordSuccess] = useState("")
   const [settings, setSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    applicationUpdates: true,
-    marketingEmails: false,
+    newOpportunities: true,
+    applicationStatusUpdates: true,
+    placementCongratulations: true,
     deadlineReminders: true,
-    weeklyDigest: true,
   })
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -107,35 +107,38 @@ export default function SettingsPage() {
 
   const handlePasswordChange = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setError("Please fill in all password fields")
+      setPasswordError("Please fill in all password fields")
+      setPasswordSuccess("")
       return
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError("New passwords do not match")
+      setPasswordError("New passwords do not match")
+      setPasswordSuccess("")
       return
     }
 
     if (passwordData.newPassword.length < 6) {
-      setError("New password must be at least 6 characters long")
+      setPasswordError("New password must be at least 6 characters long")
+      setPasswordSuccess("")
       return
     }
 
     setIsLoading(true)
-    setError("")
-    setSuccess("")
+    setPasswordError("")
+    setPasswordSuccess("")
 
     try {
       // For demo purposes, just show success
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      setSuccess("Password updated successfully!")
+      setPasswordSuccess("Password updated successfully!")
       setPasswordData({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       })
     } catch (error: any) {
-      setError(error.message || "Failed to update password")
+      setPasswordError(error.message || "Failed to update password")
     } finally {
       setIsLoading(false)
     }
@@ -247,36 +250,34 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">Email Notifications</Label>
-                    <p className="text-sm text-gray-500">Receive notifications via email</p>
+                    <Label className="text-base">New Opportunities</Label>
+                    <p className="text-sm text-gray-500">Get notified when new job opportunities are posted</p>
                   </div>
                   <Switch
-                    checked={settings.emailNotifications}
-                    onCheckedChange={(checked) => handleSettingChange("emailNotifications", checked)}
+                    checked={settings.newOpportunities}
+                    onCheckedChange={(checked) => handleSettingChange("newOpportunities", checked)}
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">SMS Notifications</Label>
-                    <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                    <Label className="text-base">Application Status Updates</Label>
+                    <p className="text-sm text-gray-500">Get notified when your application status changes (selected, shortlisted, etc.)</p>
                   </div>
                   <Switch
-                    checked={settings.smsNotifications}
-                    onCheckedChange={(checked) => handleSettingChange("smsNotifications", checked)}
+                    checked={settings.applicationStatusUpdates}
+                    onCheckedChange={(checked) => handleSettingChange("applicationStatusUpdates", checked)}
                   />
                 </div>
 
-                <Separator />
-
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">Application Updates</Label>
-                    <p className="text-sm text-gray-500">Get notified about application status changes</p>
+                    <Label className="text-base">Placement Congratulations</Label>
+                    <p className="text-sm text-gray-500">Receive congratulatory messages when you get placed</p>
                   </div>
                   <Switch
-                    checked={settings.applicationUpdates}
-                    onCheckedChange={(checked) => handleSettingChange("applicationUpdates", checked)}
+                    checked={settings.placementCongratulations}
+                    onCheckedChange={(checked) => handleSettingChange("placementCongratulations", checked)}
                   />
                 </div>
 
@@ -288,28 +289,6 @@ export default function SettingsPage() {
                   <Switch
                     checked={settings.deadlineReminders}
                     onCheckedChange={(checked) => handleSettingChange("deadlineReminders", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Weekly Digest</Label>
-                    <p className="text-sm text-gray-500">Receive weekly summary of new opportunities</p>
-                  </div>
-                  <Switch
-                    checked={settings.weeklyDigest}
-                    onCheckedChange={(checked) => handleSettingChange("weeklyDigest", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Marketing Emails</Label>
-                    <p className="text-sm text-gray-500">Receive promotional emails and updates</p>
-                  </div>
-                  <Switch
-                    checked={settings.marketingEmails}
-                    onCheckedChange={(checked) => handleSettingChange("marketingEmails", checked)}
                   />
                 </div>
               </CardContent>
@@ -366,6 +345,21 @@ export default function SettingsPage() {
                   >
                     {isLoading ? "Updating..." : "Update Password"}
                   </Button>
+
+                  {/* Password-specific status messages */}
+                  {passwordError && (
+                    <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-red-800 dark:text-red-200">{passwordError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {passwordSuccess && (
+                    <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription className="text-green-800 dark:text-green-200">{passwordSuccess}</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </CardContent>
             </Card>

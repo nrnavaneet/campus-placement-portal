@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { JobApplicationDialog } from "@/components/job-application-dialog"
 import type { Job, StudentDetails } from "@/lib/supabase"
 import {
   CheckCircle,
   AlertCircle,
   ArrowLeft,
   Building,
-  DollarSign,
+  IndianRupee,
   Calendar,
   GraduationCap,
   FileText,
@@ -29,6 +30,7 @@ export default function JobDetailsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [hasApplied, setHasApplied] = useState(false)
   const [eligibilityCheck, setEligibilityCheck] = useState({ eligible: false, reasons: [] as string[] })
+  const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false)
   const router = useRouter()
   const params = useParams()
   const jobId = params.id as string
@@ -152,6 +154,10 @@ export default function JobDetailsPage() {
       }
       return `₹${(amount / 1000).toFixed(0)}K`
     }
+    
+    if (min === max) {
+      return formatAmount(min)
+    }
     return `${formatAmount(min)} - ${formatAmount(max)}`
   }
 
@@ -175,7 +181,55 @@ export default function JobDetailsPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading job details...</div>
+          <div className="mb-6">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Jobs
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                      <div>
+                        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                        <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                        <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div>
+                          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
+                          <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader>
+                  <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="h-12 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -266,7 +320,7 @@ export default function JobDetailsPage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-green-600" />
+                    <IndianRupee className="w-5 h-5 text-green-600" />
                     <div>
                       <p className="text-sm text-gray-500">Package</p>
                       <p className="font-medium">{formatSalary(job.package_min, job.package_max)}</p>
@@ -470,7 +524,7 @@ export default function JobDetailsPage() {
                       </AlertDescription>
                     </Alert>
                     <Button
-                      onClick={() => router.push(`/jobs/${job.id}/apply`)}
+                      onClick={() => setIsApplicationDialogOpen(true)}
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       Apply Now
@@ -576,6 +630,20 @@ export default function JobDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Application Dialog */}
+      <JobApplicationDialog
+        isOpen={isApplicationDialogOpen}
+        onClose={() => setIsApplicationDialogOpen(false)}
+        job={job}
+        onApplicationSuccess={() => {
+          setHasApplied(true)
+          // Optionally refresh application status
+          if (student) {
+            checkExistingApplication(student.college_reg_no)
+          }
+        }}
+      />
     </div>
   )
 }

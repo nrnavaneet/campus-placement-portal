@@ -41,7 +41,64 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ 
+      success: true,
+      applications: data 
+    })
+  } catch (err) {
+    console.error('API error:', err)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST method to update application status
+export async function POST(request: NextRequest) {
+  try {
+    const { application_id, current_stage, notes } = await request.json()
+
+    if (!application_id || !current_stage) {
+      return NextResponse.json(
+        { error: 'Application ID and current stage are required' },
+        { status: 400 }
+      )
+    }
+
+    // Update application status
+    const { data, error } = await supabaseAdmin
+      .from('application_status')
+      .update({
+        current_stage,
+        updated_at: new Date().toISOString(),
+        // Add notes to stage history if provided
+        stage_history: notes ? {
+          stage: current_stage,
+          timestamp: new Date().toISOString(),
+          notes
+        } : undefined
+      })
+      .eq('id', application_id)
+      .select(`
+        *,
+        jobs!inner(*)
+      `)
+      .single()
+
+    if (error) {
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      data,
+      message: 'Application status updated successfully' 
+    })
   } catch (err) {
     console.error('API error:', err)
     return NextResponse.json(

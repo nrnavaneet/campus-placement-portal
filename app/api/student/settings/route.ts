@@ -61,12 +61,10 @@ export async function GET(request: NextRequest) {
 
     // If no settings found, return default settings
     const defaultSettings = {
-      emailNotifications: true,
-      smsNotifications: false,
-      applicationUpdates: true,
-      marketingEmails: false,
+      newOpportunities: true,
+      applicationStatusUpdates: true,
+      placementCongratulations: true,
       deadlineReminders: true,
-      weeklyDigest: true,
     }
 
     return NextResponse.json({

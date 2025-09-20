@@ -14,7 +14,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { supabaseClient, type StudentDetails, uploadResume, downloadResume } from "@/lib/supabase"
+import { ResumePreviewDialog } from "@/components/resume-preview-dialog"
+import { supabase, type StudentDetails, uploadResume, downloadResume } from "@/lib/supabase"
 import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download, Eye } from "lucide-react"
 
   const branches = [
@@ -38,6 +39,8 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState("")
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [profileCompletion, setProfileCompletion] = useState(0)
+  const [showResumePreview, setShowResumePreview] = useState(false)
+  const [resumePreviewUrl, setResumePreviewUrl] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -62,13 +65,13 @@ export default function ProfilePage() {
 
       const {
         data: { user },
-      } = await supabaseClient.auth.getUser()
+      } = await supabase.auth.getUser()
       if (!user) {
         router.push("/")
         return
       }
 
-      const { data, error } = await supabaseClient.from("student_details").select("*").eq("user_id", user.id).single()
+      const { data, error } = await supabase.from("student_details").select("*").eq("user_id", user.id).single()
 
       if (error && error.code === "PGRST116") {
         // No profile found, redirect to registration
@@ -159,7 +162,7 @@ export default function ProfilePage() {
       // For demo mode, update localStorage
       localStorage.setItem("student_profile", JSON.stringify(updatedData))
 
-      const { error: updateError } = await supabaseClient
+      const { error: updateError } = await supabase
         .from("student_details")
         .update(updatedData)
         .eq("id", student.id)
@@ -178,118 +181,87 @@ export default function ProfilePage() {
   }
 
   const handleDownloadResume = async () => {
-    if (!student?.resume_url) return
+    if (!student?.resume_url) {
+      setError("No resume available to download. Please upload your resume first.")
+      return
+    }
 
     try {
-      const fileName = `${student.college_reg_no}_Resume.pdf`
-      await downloadResume(student.resume_url, fileName)
+      setIsLoading(true)
+      setError("")
+      
+      const response = await fetch(`/api/admin/resume/download?regNo=${encodeURIComponent(student.college_reg_no)}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to download resume')
+      }
+
+      // Create blob from response
+      const blob = await response.blob()
+      if (blob.size === 0) {
+        throw new Error("Resume file is empty. Please upload your resume again.")
+      }
+
+      // Download the file
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${student.college_reg_no}_Resume.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
       setSuccess("Resume downloaded successfully!")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Download error:", error)
-      setError("Failed to download resume. Please try again.")
+      setError(error.message || "Failed to download resume. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleViewResume = () => {
+  const handleViewResume = async () => {
     if (!student?.resume_url) {
-      setError("No resume available to view.")
+      setError("No resume available to view. Please upload your resume first.")
       return
     }
     
     try {
-      // For mock storage URLs or demo mode, create a demo PDF
-      if (student.resume_url.startsWith("/mock-storage/")) {
-        // Create and show improved demo PDF
-        const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 <<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
->>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 150
->>
-stream
-BT
-/F1 16 Tf
-50 720 Td
-(DEMO RESUME) Tj
-0 -40 Td
-/F1 12 Tf
-(Student: ${student.first_name}) Tj
-0 -20 Td
-(Registration: ${student.college_reg_no}) Tj
-0 -20 Td
-(Branch: ${student.branch}) Tj
-0 -20 Td
-(Email: ${student.college_email}) Tj
-0 -40 Td
-(This is a demonstration resume file.) Tj
-0 -20 Td
-(In production, this would contain the actual resume.) Tj
-ET
-endstream
-endobj
-
-xref
-0 5
-0000000000 65535 f
-0000000015 00000 n
-0000000074 00000 n
-0000000131 00000 n
-0000000294 00000 n
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-494
-%%EOF`
-        
-        const blob = new Blob([pdfContent], { type: "application/pdf" })
-        const url = URL.createObjectURL(blob)
-        window.open(url, '_blank')
-        
-        // Clean up after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 10000)
-        return
-      }
+      setIsLoading(true)
+      setError("")
       
-      // For real URLs, try to open directly
-      window.open(student.resume_url, '_blank')
-    } catch (error) {
+      const response = await fetch(`/api/admin/resume/view?regNo=${encodeURIComponent(student.college_reg_no)}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to load resume')
+      }
+
+      // Create blob from response and create URL for preview
+      const blob = await response.blob()
+      if (blob.size === 0) {
+        throw new Error("Resume file is empty. Please upload your resume again.")
+      }
+
+      const url = URL.createObjectURL(blob)
+      setResumePreviewUrl(url)
+      setShowResumePreview(true)
+      
+    } catch (error: any) {
       console.error("View error:", error)
-      setError("Failed to open resume. Please try again.")
+      setError(error.message || "Failed to view resume. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCloseResumePreview = () => {
+    setShowResumePreview(false)
+    if (resumePreviewUrl) {
+      URL.revokeObjectURL(resumePreviewUrl)
+      setResumePreviewUrl("")
     }
   }
 
@@ -393,15 +365,22 @@ startxref
                 </Button>
                 {student.resume_url && (
                   <>
-                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleViewResume}>
+                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleViewResume} disabled={isLoading}>
                       <Eye className="w-4 h-4 mr-2" />
-                      View Resume
+                      {isLoading ? "Loading..." : "View Resume"}
                     </Button>
-                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleDownloadResume}>
+                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleDownloadResume} disabled={isLoading}>
                       <Download className="w-4 h-4 mr-2" />
-                      Download Resume
+                      {isLoading ? "Loading..." : "Download Resume"}
                     </Button>
                   </>
+                )}
+                {!student.resume_url && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mx-auto mb-1" />
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">No Resume</p>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-300">Upload resume first</p>
+                  </div>
                 )}
                 <Button
                   variant="outline"
@@ -638,14 +617,26 @@ startxref
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={handleViewResume}>
+                        <Button variant="outline" size="sm" onClick={handleViewResume} disabled={isLoading}>
                           <Eye className="w-4 h-4 mr-2" />
-                          View
+                          {isLoading ? "Loading..." : "View"}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleDownloadResume}>
+                        <Button variant="outline" size="sm" onClick={handleDownloadResume} disabled={isLoading}>
                           <Download className="w-4 h-4 mr-2" />
-                          Download
+                          {isLoading ? "Loading..." : "Download"}
                         </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!student.resume_url && !isEditing && (
+                    <div className="flex items-center justify-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <div className="text-center">
+                        <AlertCircle className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+                        <p className="font-medium text-yellow-800 dark:text-yellow-200">No Resume Uploaded</p>
+                        <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                          Please upload your resume to complete your profile
+                        </p>
                       </div>
                     </div>
                   )}
@@ -693,6 +684,18 @@ startxref
           </div>
         </div>
       </div>
+
+      {/* Resume Preview Dialog */}
+      {student && (
+        <ResumePreviewDialog
+          isOpen={showResumePreview}
+          onClose={handleCloseResumePreview}
+          resumeUrl={resumePreviewUrl}
+          studentName={student.first_name}
+          studentRegNo={student.college_reg_no}
+          onDownload={handleDownloadResume}
+        />
+      )}
     </div>
   )
 }

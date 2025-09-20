@@ -108,17 +108,7 @@ CREATE TABLE IF NOT EXISTS public.student_settings (
     UNIQUE(student_id)
 );
 
--- Create notification_logs table
-CREATE TABLE IF NOT EXISTS public.notification_logs (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    student_id UUID REFERENCES public.student_details(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('email', 'sms')),
-    recipient VARCHAR(255) NOT NULL,
-    subject TEXT,
-    message TEXT NOT NULL,
-    status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'failed', 'pending')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_student_details_reg_no ON public.student_details(college_reg_no);
@@ -131,8 +121,6 @@ CREATE INDEX IF NOT EXISTS idx_application_status_student ON public.application_
 CREATE INDEX IF NOT EXISTS idx_application_status_job ON public.application_status(job_id);
 CREATE INDEX IF NOT EXISTS idx_grievance_status ON public.grievance_reports(status);
 CREATE INDEX IF NOT EXISTS idx_student_settings_student_id ON public.student_settings(student_id);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_student_id ON public.notification_logs(student_id);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_type ON public.notification_logs(type);
 
 -- Enable RLS on all tables
 ALTER TABLE public.student_details ENABLE ROW LEVEL SECURITY;

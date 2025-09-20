@@ -8,13 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { supabaseClient, type Job, type StudentDetails, downloadResume } from "@/lib/supabase"
 import {
   Briefcase,
   Calendar,
   Clock,
-  DollarSign,
+  IndianRupee,
   Users,
   CheckCircle,
   XCircle,
@@ -24,7 +23,6 @@ import {
   RefreshCw,
   Eye,
   FileText,
-  Send,
   Download,
 } from "lucide-react"
 
@@ -35,10 +33,7 @@ export default function JobsPage() {
   const [studentProfile, setStudentProfile] = useState<StudentDetails | null>(null)
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([])
   const [activeTab, setActiveTab] = useState("all")
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [isApplicationPreviewOpen, setIsApplicationPreviewOpen] = useState(false)
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const router = useRouter()
 
@@ -65,7 +60,10 @@ export default function JobsPage() {
       const response = await fetch('/api/admin/jobs')
       if (response.ok) {
         const result = await response.json()
-        setJobs(result.data || [])
+        const jobsData = result.data || []
+        // Update expired jobs before setting state
+        const updatedJobs = updateExpiredJobs(jobsData)
+        setJobs(updatedJobs)
       } else {
         setError('Failed to fetch jobs')
       }
@@ -79,11 +77,28 @@ export default function JobsPage() {
 
   const fetchStudentProfile = async () => {
     try {
+      // First try to get from localStorage like applications page
+      const storedProfile = localStorage.getItem("student_profile")
+      if (storedProfile) {
+        const profileData = JSON.parse(storedProfile)
+        // Ensure case consistency for matching applications
+        if (profileData.college_reg_no) {
+          profileData.college_reg_no = profileData.college_reg_no.toUpperCase()
+        }
+        setStudentProfile(profileData)
+        return
+      }
+      
+      // Fallback to API call if no stored profile
       const studentEmail = "22etcs002132@msruas.ac.in"
       
       const response = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
       if (response.ok) {
         const result = await response.json()
+        // Make sure the college_reg_no is in the right case for matching applications
+        if (result.data && result.data.college_reg_no) {
+          result.data.college_reg_no = result.data.college_reg_no.toUpperCase()
+        }
         setStudentProfile(result.data)
       }
     } catch (error) {
@@ -101,9 +116,6 @@ export default function JobsPage() {
       if (response.ok) {
         const result = await response.json()
         applicationsData = result.data || []
-        console.log('Jobs page API returned applications:', applicationsData.length)
-      } else {
-        console.log('Applications API failed for jobs page')
       }
       
       setApplicationData(applicationsData)
@@ -180,52 +192,20 @@ export default function JobsPage() {
     return true
   }
 
-  const handleApplyClick = (job: Job) => {
-    if (!studentProfile) {
-      setError('Please complete your profile before applying')
-      return
-    }
-
-    if (!isEligibleForJob(job, studentProfile)) {
-      setError('You are not eligible for this job')
-      return
-    }
-
-    setSelectedJob(job)
-    setIsApplicationPreviewOpen(true)
-  }
-
-  const handleSubmitApplication = async () => {
-    if (!selectedJob || !studentProfile) return
-
-    setIsSubmitting(true)
-    try {
-      const response = await fetch('/api/student/applications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          student_id: studentProfile.college_reg_no, // Use college_reg_no consistently
-          job_id: selectedJob.id,
-        }),
-      })
-
-      if (response.ok) {
-        setApplicationStatus('Application submitted successfully!')
-        setIsApplicationPreviewOpen(false)
-        fetchJobs() // Refresh to update application status
-      } else {
-        const result = await response.json()
-        setError(result.error || 'Failed to submit application')
+  const updateExpiredJobs = (jobsList: Job[]): Job[] => {
+    const now = new Date()
+    return jobsList.map(job => {
+      if (job.application_deadline && (job.status === 'active' || job.status === 'upcoming')) {
+        const deadline = new Date(job.application_deadline)
+        if (deadline < now) {
+          return { ...job, status: 'closed' as const }
+        }
       }
-    } catch (error) {
-      console.error('Error submitting application:', error)
-      setError('Failed to submit application')
-    } finally {
-      setIsSubmitting(false)
-    }
+      return job
+    })
   }
+
+    // Download resume function
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -266,16 +246,32 @@ export default function JobsPage() {
           <TabsContent value={activeTab} className="mt-6">
             {loading ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i} className="animate-pulse">
                     <CardHeader>
-                      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 bg-gray-300 rounded w-32"></div>
+                            <div className="h-3 bg-gray-300 rounded w-24"></div>
+                          </div>
+                        </div>
+                        <div className="h-6 bg-gray-300 rounded-full w-16"></div>
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        <div className="h-3 bg-gray-300 rounded"></div>
-                        <div className="h-3 bg-gray-300 rounded"></div>
+                      <div className="space-y-3">
+                        <div className="h-3 bg-gray-300 rounded w-full"></div>
+                        <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                        <div className="flex justify-between">
+                          <div className="h-4 bg-gray-300 rounded w-20"></div>
+                          <div className="h-4 bg-gray-300 rounded w-24"></div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="h-8 bg-gray-300 rounded flex-1"></div>
+                          <div className="h-8 bg-gray-300 rounded flex-1"></div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -283,102 +279,223 @@ export default function JobsPage() {
               </div>
             ) : filteredJobs.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredJobs.map((job) => (
-                  <Card
-                    key={job.id}
-                    className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
-                  >
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Building className="w-6 h-6 text-white" />
+                {filteredJobs.map((job) => {
+                  // Find application data for this job if we're on the applied tab
+                  const application = activeTab === "applied" ? applicationData.find(app => app.job_id === job.id) : null
+                  
+                  return (
+                    <Card
+                      key={job.id}
+                      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group transform hover:-translate-y-1"
+                    >
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                              <Building className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
+                                {job.title}
+                              </CardTitle>
+                              <CardDescription className="font-medium">
+                                {job.company_name}
+                              </CardDescription>
+                            </div>
                           </div>
-                          <div>
-                            <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
-                              {job.title}
-                            </CardTitle>
-                            <CardDescription className="font-medium">
-                              {job.company_name}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <Badge
-                          className={
-                            job.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : job.status === "upcoming"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
-                          }
-                        >
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
-                        {job.description}
-                      </p>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1 text-sm text-green-600">
-                          <DollarSign className="w-4 h-4" />
-                          <span>₹{(job.package_min / 100000).toFixed(1)}L - ₹{(job.package_max / 100000).toFixed(1)}L</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-sm text-gray-500">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {job.application_deadline 
-                              ? new Date(job.application_deadline).toLocaleDateString()
-                              : "No deadline"
-                            }
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Eligible Branches:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {job.branches_allowed?.slice(0, 3).map((branch) => (
-                            <Badge key={branch} variant="outline" className="text-xs">
-                              {branch}
+                          {/* Show application status badge for applied jobs, job status for others */}
+                          {application ? (
+                            <Badge
+                              className={
+                                application.current_stage === "applied"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : application.current_stage === "under_review"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : application.current_stage === "shortlisted"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : application.current_stage === "interview"
+                                  ? "bg-orange-100 text-orange-800"
+                                  : application.current_stage === "assessment"
+                                  ? "bg-indigo-100 text-indigo-800"
+                                  : application.current_stage === "final_review"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : application.current_stage === "selected"
+                                  ? "bg-green-100 text-green-800"
+                                  : application.current_stage === "offered"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : application.current_stage === "placed"
+                                  ? "bg-green-200 text-green-900"
+                                  : application.current_stage === "rejected"
+                                  ? "bg-red-100 text-red-800"
+                                  : application.current_stage === "withdrawn"
+                                  ? "bg-gray-100 text-gray-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {application.current_stage.charAt(0).toUpperCase() + application.current_stage.slice(1).replace('_', ' ')}
                             </Badge>
-                          ))}
-                          {job.branches_allowed && job.branches_allowed.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{job.branches_allowed.length - 3} more
+                          ) : (
+                            <Badge
+                              className={
+                                job.status === "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : job.status === "upcoming"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : job.status === "closed"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {job.status === "closed" && job.application_deadline && new Date(job.application_deadline) < new Date() 
+                                ? "Expired" 
+                                : job.status}
                             </Badge>
                           )}
                         </div>
-                      </div>
+                      </CardHeader>
 
-                      <div className="flex gap-2 pt-4">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => router.push(`/jobs/${job.id}`)}
-                          className="flex-1"
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
-                        </Button>
-                        {job.status === "active" && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleApplyClick(job)}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                            disabled={!studentProfile || !isEligibleForJob(job, studentProfile)}
-                          >
-                            <Send className="w-4 h-4 mr-1" />
-                            Apply
-                          </Button>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
+                          {job.description}
+                        </p>
+
+                        {/* Eligibility Status - show for available jobs */}
+                        {activeTab === "available" && studentProfile && (
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">Eligibility:</span>
+                              <span className={`font-medium ${isEligibleForJob(job, studentProfile) ? 'text-green-600' : 'text-red-600'}`}>
+                                {isEligibleForJob(job, studentProfile) ? '✓ Eligible' : '✗ Not Eligible'}
+                              </span>
+                            </div>
+                            {!isEligibleForJob(job, studentProfile) && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                {job.min_ug_percentage && studentProfile.ug_percentage < job.min_ug_percentage && (
+                                  <div>• UG percentage: Need {job.min_ug_percentage}%, have {studentProfile.ug_percentage}%</div>
+                                )}
+                                {job.no_backlogs_required && studentProfile.active_backlogs && (
+                                  <div>• Active backlogs not allowed</div>
+                                )}
+                                {job.branches_allowed && job.branches_allowed.length > 0 && !job.branches_allowed.includes(studentProfile.branch) && (
+                                  <div>• Branch not eligible: {studentProfile.branch}</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        {/* Application Details - show only for applied jobs */}
+                        {application && activeTab === "applied" && (
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">Applied on:</span>
+                              <span className="font-medium">
+                                {application.applied_at ? new Date(application.applied_at).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            {application.updated_at && application.updated_at !== application.applied_at && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600 dark:text-gray-400">Last updated:</span>
+                                <span className="font-medium">
+                                  {new Date(application.updated_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">Current Status:</span>
+                              <div className="flex items-center space-x-1">
+                                {application.current_stage === "applied" ? (
+                                  <Clock className="w-4 h-4 text-blue-600" />
+                                ) : application.current_stage === "under_review" ? (
+                                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                                ) : application.current_stage === "selected" || application.current_stage === "placed" || application.current_stage === "offered" ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : application.current_stage === "rejected" ? (
+                                  <XCircle className="w-4 h-4 text-red-600" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4 text-gray-600" />
+                                )}
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  {application.current_stage.charAt(0).toUpperCase() + application.current_stage.slice(1).replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Status description */}
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {application.current_stage === "applied" && "Application received and being processed"}
+                              {application.current_stage === "under_review" && "Application is being reviewed by recruiters"}
+                              {application.current_stage === "shortlisted" && "Congratulations! You have been shortlisted"}
+                              {application.current_stage === "interview" && "Interview rounds in progress"}
+                              {application.current_stage === "assessment" && "Technical/skill assessment in progress"}
+                              {application.current_stage === "final_review" && "Final evaluation in progress"}
+                              {application.current_stage === "selected" && "🎉 Selected! Waiting for offer details"}
+                              {application.current_stage === "offered" && "🎉 Job offer received! Review and accept"}
+                              {application.current_stage === "placed" && "🌟 Congratulations! Successfully placed"}
+                              {application.current_stage === "rejected" && "Application not selected this time"}
+                              {application.current_stage === "withdrawn" && "Application was withdrawn"}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-1 text-sm text-green-600">
+                            <IndianRupee className="w-4 h-4" />
+                            <span>{(job.package_max / 100000).toFixed(1)}L</span>
+                          </div>
+                          <div className="flex items-center space-x-1 text-sm text-gray-500">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              {job.application_deadline 
+                                ? new Date(job.application_deadline).toLocaleDateString()
+                                : "No deadline"
+                              }
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Eligible Branches:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {job.branches_allowed?.slice(0, 3).map((branch) => (
+                              <Badge key={branch} variant="outline" className="text-xs">
+                                {branch}
+                              </Badge>
+                            ))}
+                            {job.branches_allowed && job.branches_allowed.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{job.branches_allowed.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                          {activeTab === "applied" && application ? (
+                            <Button 
+                              variant="outline"
+                              size="sm" 
+                              onClick={() => router.push(`/jobs/${job.id}/apply`)}
+                              className="w-full transition-all duration-200 hover:scale-105"
+                            >
+                              <FileText className="w-4 h-4 mr-1" />
+                              Track Application
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => router.push(`/jobs/${job.id}`)}
+                              className="w-full transition-all duration-200 hover:scale-105"
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-12">
@@ -400,129 +517,6 @@ export default function JobsPage() {
             )}
           </TabsContent>
         </Tabs>
-
-        {/* Application Preview Dialog */}
-        <Dialog open={isApplicationPreviewOpen} onOpenChange={setIsApplicationPreviewOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Application Preview</DialogTitle>
-              <DialogDescription>
-                Review your application details before submitting
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedJob && studentProfile && (
-              <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-blue-900 mb-2">{selectedJob.title}</h3>
-                  <p className="text-blue-700">{selectedJob.company_name}</p>
-                  <p className="text-sm text-blue-600 mt-2">
-                    Package: ₹{(selectedJob.package_min / 100000).toFixed(1)}L - ₹{(selectedJob.package_max / 100000).toFixed(1)}L
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Student Details</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Name:</span>
-                        <span className="ml-2 font-medium">{studentProfile.first_name}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Registration:</span>
-                        <span className="ml-2 font-medium">{studentProfile.college_reg_no}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Branch:</span>
-                        <span className="ml-2 font-medium">{studentProfile.branch}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">UG Percentage:</span>
-                        <span className="ml-2 font-medium">{studentProfile.ug_percentage}%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">Resume</h4>
-                    {studentProfile.resume_url ? (
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Resume Available
-                        </Badge>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => window.open(studentProfile.resume_url, '_blank')}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await downloadResume(studentProfile.resume_url!, `${studentProfile.college_reg_no}_Resume.pdf`)
-                              } catch (error) {
-                                console.error('Download failed:', error)
-                              }
-                            }}
-                          >
-                            <Download className="w-4 h-4 mr-1" />
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Badge className="bg-red-100 text-red-800">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Resume Required
-                      </Badge>
-                    )}
-                  </div>
-
-                  <Alert className="border-yellow-200 bg-yellow-50">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      By submitting this application, you confirm that all the information provided is accurate.
-                      You will receive notifications about the application status via email.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsApplicationPreviewOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSubmitApplication}
-                    disabled={isSubmitting || !studentProfile.resume_url}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Submit Application
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   )

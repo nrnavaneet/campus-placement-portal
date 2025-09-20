@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Navbar } from "@/components/layout/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +25,8 @@ import {
   Calendar,
   Edit,
   Eye,
-  Search
+  Search,
+  ArrowLeft
 } from "lucide-react"
 
 interface Application {
@@ -68,6 +71,7 @@ export default function AdminApplicationsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isRoundModalOpen, setIsRoundModalOpen] = useState(false)
+  const [isAppModalOpen, setIsAppModalOpen] = useState(false)
   const [selectedRound, setSelectedRound] = useState<ApplicationRound | null>(null)
   const [updateData, setUpdateData] = useState({
     status: "",
@@ -75,6 +79,10 @@ export default function AdminApplicationsPage() {
     feedback: "",
     score: "",
     scheduled_at: ""
+  })
+  const [appUpdateData, setAppUpdateData] = useState({
+    current_stage: "",
+    notes: ""
   })
 
   useEffect(() => {
@@ -186,6 +194,46 @@ export default function AdminApplicationsPage() {
     setIsRoundModalOpen(true)
   }
 
+  const handleUpdateApplication = async () => {
+    if (!selectedApplication || !appUpdateData.current_stage) return
+
+    setIsUpdating(true)
+    try {
+      const response = await fetch('/api/admin/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: selectedApplication.id,
+          current_stage: appUpdateData.current_stage,
+          notes: appUpdateData.notes
+        })
+      })
+
+      if (response.ok) {
+        // Refresh applications
+        await fetchApplications(selectedJob)
+        setIsAppModalOpen(false)
+        setSelectedApplication(null)
+        setAppUpdateData({ current_stage: "", notes: "" })
+      } else {
+        console.error('Failed to update application')
+      }
+    } catch (error) {
+      console.error('Error updating application:', error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const openAppModal = (application: Application) => {
+    setSelectedApplication(application)
+    setAppUpdateData({
+      current_stage: application.status,
+      notes: ""
+    })
+    setIsAppModalOpen(true)
+  }
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       'pending': 'bg-gray-100 text-gray-800',
@@ -221,6 +269,17 @@ export default function AdminApplicationsPage() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <Link 
+            href="/admin" 
+            className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Admin Dashboard
+          </Link>
+        </div>
+        
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Application Management
@@ -277,9 +336,15 @@ export default function AdminApplicationsPage() {
                     <SelectItem value="all">All Applications</SelectItem>
                     <SelectItem value="applied">Applied</SelectItem>
                     <SelectItem value="under_review">Under Review</SelectItem>
+                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
                     <SelectItem value="interview">Interview</SelectItem>
+                    <SelectItem value="assessment">Assessment</SelectItem>
+                    <SelectItem value="final_review">Final Review</SelectItem>
                     <SelectItem value="selected">Selected</SelectItem>
+                    <SelectItem value="offered">Offered</SelectItem>
+                    <SelectItem value="placed">Placed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -326,9 +391,19 @@ export default function AdminApplicationsPage() {
                         Applied on {new Date(application.applied_at).toLocaleDateString()}
                       </CardDescription>
                     </div>
-                    <Badge className={getStatusColor(application.status)}>
-                      {application.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(application.status)}>
+                        {application.status}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openAppModal(application)}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Update Status
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
 
@@ -467,6 +542,67 @@ export default function AdminApplicationsPage() {
                 </Button>
                 <Button onClick={handleUpdateRound} disabled={isUpdating} className="flex-1">
                   {isUpdating ? 'Updating...' : 'Update Round'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Application Status Update Modal */}
+        <Dialog open={isAppModalOpen} onOpenChange={setIsAppModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Update Application Status
+              </DialogTitle>
+              <DialogDescription>
+                Update the overall application status for {selectedApplication?.student_reg_no}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="app-status">Application Status</Label>
+                <Select 
+                  value={appUpdateData.current_stage} 
+                  onValueChange={(value) => setAppUpdateData({...appUpdateData, current_stage: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="applied">Applied</SelectItem>
+                    <SelectItem value="under_review">Under Review</SelectItem>
+                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                    <SelectItem value="interview">Interview</SelectItem>
+                    <SelectItem value="assessment">Assessment</SelectItem>
+                    <SelectItem value="final_review">Final Review</SelectItem>
+                    <SelectItem value="selected">Selected</SelectItem>
+                    <SelectItem value="offered">Offered</SelectItem>
+                    <SelectItem value="placed">Placed</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="app-notes">Status Change Notes</Label>
+                <Textarea
+                  id="app-notes"
+                  placeholder="Add notes about this status change..."
+                  value={appUpdateData.notes}
+                  onChange={(e) => setAppUpdateData({...appUpdateData, notes: e.target.value})}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => setIsAppModalOpen(false)} variant="outline" className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateApplication} disabled={isUpdating || !appUpdateData.current_stage} className="flex-1">
+                  {isUpdating ? 'Updating...' : 'Update Status'}
                 </Button>
               </div>
             </div>

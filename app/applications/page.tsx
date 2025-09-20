@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import type { ApplicationStatus, StudentDetails } from "@/lib/supabase"
-import { Clock, CheckCircle, XCircle, Calendar, Building, FileText, AlertCircle, Users, Briefcase } from "lucide-react"
+import { Clock, CheckCircle, XCircle, Calendar, Building, FileText, AlertCircle, Users, Briefcase, IndianRupee } from "lucide-react"
 
 interface ApplicationWithDetails extends ApplicationStatus {
   job_title?: string
@@ -81,7 +81,7 @@ export default function ApplicationsPage() {
             company_name: app.company_name,
             job_title: app.jobs?.title || 'Unknown Job',
             company_logo: "/placeholder.svg?height=40&width=40",
-            package_range: app.jobs ? `₹${(app.jobs.package_min / 100000).toFixed(1)}L - ₹${(app.jobs.package_max / 100000).toFixed(1)}L` : 'Not specified',
+            package_range: app.jobs ? `${(app.jobs.package_max / 100000).toFixed(1)}L` : 'Not specified',
             current_stage: app.current_stage,
             stage_history: [
               { 
@@ -248,7 +248,10 @@ export default function ApplicationsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'N/A'
+    return date.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -273,7 +276,10 @@ export default function ApplicationsPage() {
                 <CardTitle className="text-lg">{application.job_title}</CardTitle>
                 <CardDescription className="font-medium">{application.company_name}</CardDescription>
                 {application.package_range && (
-                  <p className="text-sm text-green-600 font-medium">{application.package_range}</p>
+                  <div className="flex items-center gap-1">
+                    <IndianRupee className="w-4 h-4 text-green-600" />
+                    <p className="text-sm text-green-600 font-medium">{application.package_range}</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -385,7 +391,7 @@ export default function ApplicationsPage() {
 
           <div className="flex justify-between items-center pt-4 border-t">
             <div className="text-sm text-gray-500">Applied: {formatDate(application.applied_at)}</div>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/applications/${application.id}`)}>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/jobs/${application.job_id}`)}>
               View Details
             </Button>
           </div>
@@ -399,7 +405,41 @@ export default function ApplicationsPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading applications...</div>
+          <div className="mb-8">
+            <div className="h-8 bg-gray-300 rounded w-48 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-300 rounded w-64 animate-pulse"></div>
+          </div>
+          
+          {/* Stats cards loading */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-white/80 dark:bg-gray-800/80 p-6 rounded-lg shadow animate-pulse">
+                <div className="h-4 bg-gray-300 rounded w-16 mb-2"></div>
+                <div className="h-8 bg-gray-300 rounded w-8 mb-1"></div>
+                <div className="h-3 bg-gray-300 rounded w-12"></div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Application cards loading */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white/80 dark:bg-gray-800/80 rounded-lg shadow p-6 animate-pulse">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-300 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded w-24"></div>
+                  </div>
+                  <div className="h-6 bg-gray-300 rounded-full w-16"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-300 rounded w-full"></div>
+                  <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

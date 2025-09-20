@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Briefcase, Calendar, TrendingUp, Users, FileText, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { Briefcase, Calendar, TrendingUp, Users, FileText, Clock, CheckCircle, AlertCircle, IndianRupee, MessageSquare } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
@@ -18,6 +18,7 @@ export default function DashboardPage() {
     profileCompletion: 0,
   })
   const [recentApplications, setRecentApplications] = useState<any[]>([])
+  const [grievances, setGrievances] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [studentProfile, setStudentProfile] = useState<any>(null)
 
@@ -82,6 +83,13 @@ export default function DashboardPage() {
           ...applicationStats,
           profileCompletion
         })
+
+        // Fetch student grievances
+        const grievanceResponse = await fetch(`/api/grievance?student_reg_no=${encodeURIComponent(profileResult.data.reg_no)}`)
+        if (grievanceResponse.ok) {
+          const grievanceData = await grievanceResponse.json()
+          setGrievances(grievanceData.slice(0, 3)) // Show only latest 3
+        }
       }
     } catch (error) {
       console.error("Error fetching student data:", error)
@@ -114,20 +122,29 @@ export default function DashboardPage() {
     switch (status.toLowerCase()) {
       case "placed":
       case "selected":
-        return <CheckCircle className="w-4 h-4" />
+        return <CheckCircle className="w-3 h-3" />
       case "interview":
       case "interview_scheduled":
-        return <Calendar className="w-4 h-4" />
-      case "under_review":
-      case "applied":
-        return <Clock className="w-4 h-4" />
-      case "offered":
-        return <TrendingUp className="w-4 h-4" />
-      case "rejected":
-        return <AlertCircle className="w-4 h-4" />
+        return <AlertCircle className="w-3 h-3" />
       default:
-        return <AlertCircle className="w-4 h-4" />
+        return <Clock className="w-3 h-3" />
     }
+  }
+
+  const getGrievanceStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      case "submitted":
+      default:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+    }
+  }
+
+  const formatGrievanceStatus = (status: string) => {
+    return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
   }
 
   const formatStatus = (status: string) => {
@@ -317,9 +334,19 @@ export default function DashboardPage() {
                     <span>Academic Details</span>
                   </div>
                 </div>
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Complete Profile
-                </Button>
+                {stats.profileCompletion === 100 ? (
+                  <div className="flex items-center gap-2 text-green-600 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Profile Completed!</span>
+                  </div>
+                ) : (
+                  <Button 
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
+                    onClick={() => router.push("/profile")}
+                  >
+                    Complete Profile ({stats.profileCompletion}%)
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -352,6 +379,82 @@ export default function DashboardPage() {
                   <FileText className="w-4 h-4 mr-2" />
                   Update Resume
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Grievance Tracking */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Recent Grievances
+                </CardTitle>
+                <CardDescription>Track your submitted grievances and their status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="animate-pulse p-3 rounded-lg border bg-gray-50/50">
+                        <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div className="h-2 bg-gray-300 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : grievances.length > 0 ? (
+                  <div className="space-y-3">
+                    {grievances.map((grievance) => (
+                      <div
+                        key={grievance.id}
+                        className="p-3 rounded-lg border bg-gray-50/50 dark:bg-gray-700/50 transition-all duration-200 hover:shadow-md"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                            {grievance.issue_type}
+                          </h4>
+                          <Badge className={getGrievanceStatusColor(grievance.status)} variant="outline">
+                            {formatGrievanceStatus(grievance.status)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">
+                          {grievance.message}
+                        </p>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(grievance.created_at).toLocaleDateString()}
+                        </div>
+                        {grievance.admin_response && (
+                          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                            <p className="text-xs text-blue-800 dark:text-blue-200">
+                              <span className="font-medium">Admin Response:</span> {grievance.admin_response}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No grievances submitted</p>
+                    <Button 
+                      size="sm" 
+                      className="mt-3" 
+                      onClick={() => router.push('/grievance')}
+                    >
+                      Submit Grievance
+                    </Button>
+                  </div>
+                )}
+                {grievances.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mt-3"
+                    onClick={() => router.push('/grievance')}
+                  >
+                    View All Grievances
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -27,9 +27,10 @@ async function addActivity(title: string, type: string, description: string = ''
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const jobId = params.id
+    const { id } = await params
+    const jobId = id
 
     if (!jobId) {
       return NextResponse.json(
@@ -70,9 +71,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const jobId = params.id
+    const { id } = await params
+    const jobId = id
     const jobData = await request.json()
 
     if (!jobId) {
@@ -119,9 +121,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const jobId = params.id
+    const { id } = await params
+    const jobId = id
 
     if (!jobId) {
       return NextResponse.json(

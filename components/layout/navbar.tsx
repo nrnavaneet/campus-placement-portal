@@ -20,13 +20,13 @@ import {
   LogOut,
   Moon,
   Sun,
-  Bell,
   GraduationCap,
   Briefcase,
   FileText,
   Home,
   Menu,
   X,
+  MessageSquare,
 } from "lucide-react"
 
 export function Navbar() {
@@ -118,8 +118,7 @@ export function Navbar() {
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/jobs", label: "Jobs", icon: Briefcase },
     { href: "/applications", label: "Applications", icon: FileText },
-    { href: "/profile", label: "Profile", icon: User },
-    { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/grievance", label: "Grievance", icon: MessageSquare },
   ]
 
   if (isLoading) {
@@ -190,20 +189,14 @@ export function Navbar() {
 
             {user ? (
               <>
-                {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {profileCompletion < 100 && (
-                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                  )}
-                </Button>
-
                 {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-white font-semibold text-sm">
+                          {student?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                        </span>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>

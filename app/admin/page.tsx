@@ -43,7 +43,7 @@ import {
   Search,
   GraduationCap,
   Calendar,
-  DollarSign,
+  IndianRupee,
   MessageSquare,
   BarChart3,
 } from "lucide-react"
@@ -308,6 +308,18 @@ export default function AdminDashboard() {
       setError("Valid minimum UG percentage is required")
       return
     }
+    if (!newJob.package_min || Number.parseFloat(newJob.package_min) <= 0) {
+      setError("Valid minimum package is required")
+      return
+    }
+    if (!newJob.package_max || Number.parseFloat(newJob.package_max) <= 0) {
+      setError("Valid maximum package is required")
+      return
+    }
+    if (Number.parseFloat(newJob.package_min) > Number.parseFloat(newJob.package_max)) {
+      setError("Minimum package cannot be greater than maximum package")
+      return
+    }
 
     const jobData = {
       title: newJob.title.trim(),
@@ -453,6 +465,18 @@ export default function AdminDashboard() {
     }
     if (!editJob.description?.trim()) {
       setError("Job description is required")
+      return
+    }
+    if (!editJob.package_min || Number.parseFloat(editJob.package_min) <= 0) {
+      setError("Valid minimum package is required")
+      return
+    }
+    if (!editJob.package_max || Number.parseFloat(editJob.package_max) <= 0) {
+      setError("Valid maximum package is required")
+      return
+    }
+    if (Number.parseFloat(editJob.package_min) > Number.parseFloat(editJob.package_max)) {
+      setError("Minimum package cannot be greater than maximum package")
       return
     }
 
@@ -683,7 +707,9 @@ export default function AdminDashboard() {
       companyWiseData: jobs.map((job) => ({
         company: job.company_name,
         position: job.title,
-        package: `₹${(job.package_min / 100000).toFixed(1)}L - ₹${(job.package_max / 100000).toFixed(1)}L`,
+        package: job.package_min === job.package_max 
+          ? `₹${(job.package_min / 100000).toFixed(1)}L`
+          : `₹${(job.package_min / 100000).toFixed(1)}L - ₹${(job.package_max / 100000).toFixed(1)}L`,
         status: job.status,
       })),
     }
@@ -1072,6 +1098,7 @@ ${reportData.companyWiseData
                               value={newJob.package_min}
                               onChange={(e) => setNewJob({ ...newJob, package_min: e.target.value })}
                               placeholder="600000"
+                              required
                             />
                           </div>
                           <div className="space-y-2">
@@ -1082,6 +1109,7 @@ ${reportData.companyWiseData
                               value={newJob.package_max}
                               onChange={(e) => setNewJob({ ...newJob, package_max: e.target.value })}
                               placeholder="1200000"
+                              required
                             />
                           </div>
                         </div>
@@ -1186,6 +1214,15 @@ ${reportData.companyWiseData
                     </DialogContent>
                   </Dialog>
 
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-green-600"
+                    onClick={() => router.push('/admin/applications')}
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Manage Applications
+                  </Button>
+
                   <Button variant="outline" className="w-full justify-start bg-transparent" onClick={exportStudentData}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Student Data
@@ -1279,10 +1316,8 @@ ${reportData.companyWiseData
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                        <span>
-                          ₹{(job.package_min / 100000).toFixed(1)}L - ₹{(job.package_max / 100000).toFixed(1)}L
-                        </span>
+                        <IndianRupee className="w-4 h-4 text-green-600" />
+                        <span>{(job.package_max / 100000).toFixed(1)}L</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <GraduationCap className="w-4 h-4 text-blue-600" />
@@ -1752,7 +1787,10 @@ ${reportData.companyWiseData
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="font-medium">Package Range</Label>
-                    <p>₹{selectedJob.package_min ? (selectedJob.package_min / 100000).toFixed(1) : '0'}L - ₹{selectedJob.package_max ? (selectedJob.package_max / 100000).toFixed(1) : '0'}L</p>
+                    <p>{selectedJob.package_min === selectedJob.package_max
+                      ? `₹${selectedJob.package_min ? (selectedJob.package_min / 100000).toFixed(1) : '0'}L`
+                      : `₹${selectedJob.package_min ? (selectedJob.package_min / 100000).toFixed(1) : '0'}L - ₹${selectedJob.package_max ? (selectedJob.package_max / 100000).toFixed(1) : '0'}L`
+                    }</p>
                   </div>
                   <div>
                     <Label className="font-medium">Minimum UG Percentage</Label>
@@ -1822,6 +1860,7 @@ ${reportData.companyWiseData
                     type="number"
                     value={editJob.package_min}
                     onChange={(e) => setEditJob({ ...editJob, package_min: e.target.value })}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -1831,6 +1870,7 @@ ${reportData.companyWiseData
                     type="number"
                     value={editJob.package_max}
                     onChange={(e) => setEditJob({ ...editJob, package_max: e.target.value })}
+                    required
                   />
                 </div>
               </div>

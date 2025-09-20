@@ -14,7 +14,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Building,
-  DollarSign,
+  IndianRupee,
   Calendar,
   GraduationCap,
   FileText,
@@ -293,7 +293,7 @@ export default function JobApplicationPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-green-600" />
+                    <IndianRupee className="w-5 h-5 text-green-600" />
                     <div>
                       <p className="text-sm text-gray-500">Package</p>
                       <p className="font-medium">{formatSalary(job.package_min, job.package_max)}</p>

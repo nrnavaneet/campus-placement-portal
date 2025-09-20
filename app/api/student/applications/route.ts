@@ -2,26 +2,47 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Helper function to send notification
-async function sendApplicationNotification(studentId: string, jobTitle: string, companyName: string) {
+async function sendApplicationNotification(applicationId: string, jobId: string, studentRegNo: string) {
   // Skip notifications during build
   if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL && !process.env.NEXT_PUBLIC_APP_URL) {
     return
   }
 
   try {
-    // Get student details
+    // Get student details by registration number
     const { data: student } = await supabaseAdmin
       .from('student_details')
-      .select('first_name, personal_email, mobile_number')
-      .eq('id', studentId)
+      .select('user_id, first_name, college_email, personal_email, mobile_number')
+      .eq('college_reg_no', studentRegNo)
       .single()
 
-    if (!student) return
+    if (!student) {
+      console.log('Student not found for reg no:', studentRegNo)
+      return
+    }
 
-    console.log(`📧 Would send notification to ${student.first_name} (${student.personal_email}) about application to ${companyName} for ${jobTitle}`)
+    console.log(`📧 Sending application notification for student: ${student.first_name}`)
     
-    // In production, implement actual notification sending
-    // For now, just log the notification
+    // Call our notification API
+    const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/api/notifications/application`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        applicationId,
+        jobId,
+        studentId: student.user_id
+      })
+    })
+
+    if (!notificationResponse.ok) {
+      console.error('Failed to send notification:', await notificationResponse.text())
+    } else {
+      const result = await notificationResponse.json()
+      console.log('✅ Notification sent:', result)
+    }
+    
   } catch (error) {
     console.error('Error sending notification:', error)
   }
@@ -48,36 +69,21 @@ export async function GET(request: NextRequest) {
 
     console.log(`Fetching applications for student ID: ${studentId}`)
 
-    // Get applications for the student
+    // Use the same query structure as admin API but filter by student
     const { data: applications, error: appsError } = await supabaseAdmin
       .from('application_status')
       .select(`
         *,
         jobs!inner(*)
       `)
-      .eq('student_reg_no', studentId) // Use student_reg_no field
-      .order('created_at', { ascending: false })
+      .eq('student_reg_no', studentId)
+      .order('applied_at', { ascending: false })
 
     console.log('Applications query result:', { applications: applications?.length || 0, error: appsError })
 
     if (appsError) {
       console.error('Error fetching applications:', appsError)
-      // If application_status table doesn't exist, return empty array
-      if (appsError.code === '42P01') {
-        console.log('Application status table not found, returning empty results')
-        return NextResponse.json({
-          success: true,
-          data: [],
-          stats: {
-            totalApplications: 0,
-            activeApplications: 0,
-            interviews: 0,
-            offers: 0,
-            placed: 0
-          }
-        })
-      }
-      return NextResponse.json({ error: 'Failed to fetch applications' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to fetch applications', details: appsError }, { status: 500 })
     }
 
     // Calculate statistics
@@ -191,7 +197,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send application confirmation notification
-    sendApplicationNotification(student_id, newApplication.jobs.title, newApplication.jobs.company_name)
+    sendApplicationNotification(newApplication.id, job_id, student_id)
       .catch(error => console.error('Notification error:', error))
 
     return NextResponse.json({
