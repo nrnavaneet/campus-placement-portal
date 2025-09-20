@@ -288,19 +288,6 @@ export default function JobDetailsPage() {
                     ))}
                   </div>
                 </div>
-
-                {job.eligibility_criteria?.skills && job.eligibility_criteria.skills.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold mb-2">Required Skills</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {job.eligibility_criteria.skills.map((skill: string) => (
-                        <Badge key={skill} variant="secondary">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 

@@ -58,11 +58,23 @@ export default function AdminDashboard() {
   const [filterBranch, setFilterBranch] = useState("all")
   const [filterJobStatus, setFilterJobStatus] = useState("all")
   const [selectedJobForExport, setSelectedJobForExport] = useState("all")
+  const [selectedCompanyForReport, setSelectedCompanyForReport] = useState("all")
+  const [isCompanyReportOpen, setIsCompanyReportOpen] = useState(false)
+  const [companyReportData, setCompanyReportData] = useState<any[]>([])
   const [isAddJobOpen, setIsAddJobOpen] = useState(false)
   const [isEditJobOpen, setIsEditJobOpen] = useState(false)
   const [isViewJobOpen, setIsViewJobOpen] = useState(false)
   const [isDeleteJobOpen, setIsDeleteJobOpen] = useState(false)
+  const [isViewStudentOpen, setIsViewStudentOpen] = useState(false)
+  const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null)
+  const [updateStatusForm, setUpdateStatusForm] = useState({
+    status: "",
+    company: "",
+    package_amount: "",
+    notes: ""
+  })
   const [editJob, setEditJob] = useState({
     title: "",
     company_name: "",
@@ -309,7 +321,6 @@ export default function AdminDashboard() {
       counts_as_offer: true,
       eligibility_criteria: {
         experience: "0-2 years",
-        skills: [],
         backlogs_allowed: !newJob.no_backlogs_required,
       },
       timeline: [
@@ -547,6 +558,75 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url)
   }
 
+  // Student management handlers
+  const handleViewStudent = (student: StudentDetails) => {
+    setSelectedStudent(student)
+    setIsViewStudentOpen(true)
+  }
+
+  const handleDownloadResume = async (student: StudentDetails) => {
+    if (!student.resume_url) {
+      alert("Resume not available for this student")
+      return
+    }
+
+    try {
+      // Create a temporary link to download the resume
+      const link = document.createElement('a')
+      link.href = student.resume_url
+      link.download = `${student.first_name}_${student.college_reg_no}_resume.pdf`
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error("Error downloading resume:", error)
+      alert("Failed to download resume")
+    }
+  }
+
+  const handleUpdateStudentStatus = (student: StudentDetails) => {
+    setSelectedStudent(student)
+    setUpdateStatusForm({
+      status: student.placement_status.accepted_offers > 0 ? "placed" : "active",
+      company: "",
+      package_amount: student.placement_status.max_ctc?.toString() || "",
+      notes: ""
+    })
+    setIsUpdateStatusOpen(true)
+  }
+
+  const saveStudentStatusUpdate = async () => {
+    if (!selectedStudent) return
+
+    try {
+      const response = await fetch('/api/admin/update-student-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          student_id: selectedStudent.id,
+          status: updateStatusForm.status,
+          company: updateStatusForm.company,
+          package_amount: parseFloat(updateStatusForm.package_amount) || 0,
+          notes: updateStatusForm.notes
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update student status')
+      }
+
+      setIsUpdateStatusOpen(false)
+      setSelectedStudent(null)
+      setSuccess("Student status updated successfully!")
+      fetchData() // Refresh data
+    } catch (error: any) {
+      setError(error.message || "Failed to update student status")
+    }
+  }
+
   const exportJobData = () => {
     let jobsToExport = jobs
     if (selectedJobForExport !== "all") {
@@ -642,6 +722,54 @@ ${reportData.companyWiseData
     const link = document.createElement("a")
     link.href = url
     link.download = `placement-report-${new Date().toISOString().split("T")[0]}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // Company-wise report generation
+  const generateCompanyReport = async (company: string = "all") => {
+    try {
+      const response = await fetch(`/api/admin/company-report?company=${encodeURIComponent(company)}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch company report')
+      }
+      const result = await response.json()
+      setCompanyReportData(result.data)
+      setIsCompanyReportOpen(true)
+    } catch (error) {
+      console.error('Error generating company report:', error)
+      setError('Failed to generate company report')
+    }
+  }
+
+  const exportCompanyReport = (company: string = "all") => {
+    let dataToExport = companyReportData
+    if (company !== "all") {
+      dataToExport = companyReportData.filter((item) => item.company_name === company)
+    }
+
+    const csvContent = [
+      ["Company", "Job Title", "Student Name", "Registration No", "Branch", "Status", "Package"].join(","),
+      ...dataToExport.map((item) =>
+        [
+          item.company_name,
+          item.job_title,
+          item.student_name,
+          item.student_reg_no,
+          item.branch,
+          item.status,
+          item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A",
+        ].join(",")
+      ),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `company-report-${company === "all" ? "all" : company}-${new Date().toISOString().split("T")[0]}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -1299,14 +1427,12 @@ ${reportData.companyWiseData
                           </td>
                           <td className="p-4">
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" onClick={() => handleViewStudent(student)}>
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {student.resume_url && (
-                                <Button variant="outline" size="sm">
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                              )}
+                              <Button variant="outline" size="sm" onClick={() => handleUpdateStudentStatus(student)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -1501,15 +1627,15 @@ ${reportData.companyWiseData
                   <CardDescription>Student distribution across branches</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {branches.slice(0, 5).map((branch) => {
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {branches.map((branch) => {
                       const count = students.filter((s) => s.branch === branch).length
                       const percentage = stats.totalStudents > 0 ? (count / stats.totalStudents) * 100 : 0
                       return (
                         <div key={branch} className="space-y-1">
                           <div className="flex justify-between text-sm">
-                            <span>{branch}</span>
-                            <span>{count} students</span>
+                            <span className="truncate mr-2">{branch}</span>
+                            <span className="font-mono text-xs">{count} students</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
@@ -1521,6 +1647,43 @@ ${reportData.companyWiseData
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle>Company-wise Reports</CardTitle>
+                <CardDescription>Generate reports based on company applications and placements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-4 items-center">
+                    <Select value={selectedCompanyForReport} onValueChange={setSelectedCompanyForReport}>
+                      <SelectTrigger className="w-64">
+                        <SelectValue placeholder="Select company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Companies</SelectItem>
+                        {Array.from(new Set(jobs.map(job => job.company_name))).map((company) => (
+                          <SelectItem key={company} value={company}>
+                            {company}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={() => generateCompanyReport(selectedCompanyForReport)}
+                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generate Report
+                    </Button>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600">
+                    View detailed information about student applications and placements for specific companies or all companies.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
@@ -1759,6 +1922,282 @@ ${reportData.companyWiseData
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* View Student Dialog */}
+        <Dialog open={isViewStudentOpen} onOpenChange={setIsViewStudentOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Student Details</DialogTitle>
+              <DialogDescription>View complete student information</DialogDescription>
+            </DialogHeader>
+            
+            {selectedStudent && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">Name</Label>
+                    <p className="text-sm mt-1">{selectedStudent.first_name}</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Registration Number</Label>
+                    <p className="text-sm mt-1 font-mono">{selectedStudent.college_reg_no}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">Email</Label>
+                    <p className="text-sm mt-1">{selectedStudent.college_email}</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Mobile</Label>
+                    <p className="text-sm mt-1">{selectedStudent.mobile_number}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">UG Percentage</Label>
+                    <p className="text-sm mt-1">{selectedStudent.ug_percentage}%</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Active Backlogs</Label>
+                    <p className="text-sm mt-1">{selectedStudent.active_backlogs ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">Personal Email</Label>
+                    <p className="text-sm mt-1">{selectedStudent.personal_email}</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">PWD Status</Label>
+                    <p className="text-sm mt-1">{selectedStudent.pwd ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="font-medium">Resume Status</Label>
+                  <div className="mt-1">
+                    {selectedStudent.resume_url ? (
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Uploaded
+                        </Badge>
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadResume(selectedStudent)}>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    ) : (
+                      <Badge className="bg-red-100 text-red-800">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Not Uploaded
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="font-medium">Placement Status</Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Total Offers:</span>
+                      <span className="font-mono">{selectedStudent.placement_status.offers?.length || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Accepted Offers:</span>
+                      <span className="font-mono">{selectedStudent.placement_status.accepted_offers || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Max CTC:</span>
+                      <span className="font-mono">₹{((selectedStudent.placement_status.max_ctc || 0) / 100000).toFixed(1)}L</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Max Offers Allowed:</span>
+                      <span className="font-mono">{selectedStudent.placement_status.max_offers_allowed || 2}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsViewStudentOpen(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => {
+                    setIsViewStudentOpen(false)
+                    handleUpdateStudentStatus(selectedStudent)
+                  }}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Update Status
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Update Student Status Dialog */}
+        <Dialog open={isUpdateStatusOpen} onOpenChange={setIsUpdateStatusOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Student Status</DialogTitle>
+              <DialogDescription>
+                Update placement status for {selectedStudent?.first_name}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={updateStatusForm.status}
+                  onValueChange={(value) => setUpdateStatusForm({ ...updateStatusForm, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="interview">Interview Scheduled</SelectItem>
+                    <SelectItem value="placed">Placed</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="company">Company (Optional)</Label>
+                <Input
+                  id="company"
+                  value={updateStatusForm.company}
+                  onChange={(e) => setUpdateStatusForm({ ...updateStatusForm, company: e.target.value })}
+                  placeholder="Company name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="package">Package Amount (₹)</Label>
+                <Input
+                  id="package"
+                  type="number"
+                  value={updateStatusForm.package_amount}
+                  onChange={(e) => setUpdateStatusForm({ ...updateStatusForm, package_amount: e.target.value })}
+                  placeholder="Package in rupees"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={updateStatusForm.notes}
+                  onChange={(e) => setUpdateStatusForm({ ...updateStatusForm, notes: e.target.value })}
+                  placeholder="Additional notes..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsUpdateStatusOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveStudentStatusUpdate}>
+                  Update Status
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Company Report Dialog */}
+        <Dialog open={isCompanyReportOpen} onOpenChange={setIsCompanyReportOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Company-wise Report</DialogTitle>
+              <DialogDescription>
+                {selectedCompanyForReport === "all" 
+                  ? "All Companies Report" 
+                  : `${selectedCompanyForReport} Report`}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  Total Records: {companyReportData.length}
+                </span>
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportCompanyReport(selectedCompanyForReport)}
+                  size="sm"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto max-h-96">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr>
+                      <th className="p-3 text-left font-medium">Company</th>
+                      <th className="p-3 text-left font-medium">Job Title</th>
+                      <th className="p-3 text-left font-medium">Student</th>
+                      <th className="p-3 text-left font-medium">Reg No</th>
+                      <th className="p-3 text-left font-medium">Branch</th>
+                      <th className="p-3 text-left font-medium">Status</th>
+                      <th className="p-3 text-left font-medium">Package</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companyReportData.map((item, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-medium">{item.company_name}</td>
+                        <td className="p-3">{item.job_title}</td>
+                        <td className="p-3">{item.student_name}</td>
+                        <td className="p-3 font-mono text-xs">{item.student_reg_no}</td>
+                        <td className="p-3 text-xs">{item.branch}</td>
+                        <td className="p-3">
+                          <Badge 
+                            className={
+                              item.status === 'placed' 
+                                ? 'bg-green-100 text-green-800'
+                                : item.status === 'interview'
+                                ? 'bg-blue-100 text-blue-800'
+                                : item.status === 'rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {item.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 font-mono text-xs">
+                          {item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {companyReportData.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No data available for the selected company
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setIsCompanyReportOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

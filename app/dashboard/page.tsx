@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navbar } from "@/components/layout/navbar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,63 +11,129 @@ import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
-    totalApplications: 5,
-    activeApplications: 3,
-    interviews: 2,
-    offers: 1,
-    profileCompletion: 95,
+    totalApplications: 0,
+    activeApplications: 0,
+    interviews: 0,
+    offers: 0,
+    profileCompletion: 0,
   })
+  const [recentApplications, setRecentApplications] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [studentProfile, setStudentProfile] = useState<any>(null)
 
-  const recentApplications = [
-    {
-      id: 1,
-      company: "TechCorp Solutions",
-      position: "Software Developer",
-      status: "Interview Scheduled",
-      appliedDate: "2024-01-15",
-      deadline: "2024-02-10",
-    },
-    {
-      id: 2,
-      company: "DataViz Inc",
-      position: "Data Analyst Intern",
-      status: "Under Review",
-      appliedDate: "2024-01-20",
-      deadline: "2024-02-01",
-    },
-    {
-      id: 3,
-      company: "InnovateTech",
-      position: "Frontend Developer",
-      status: "Selected",
-      appliedDate: "2024-01-10",
-      deadline: "2024-01-25",
-    },
-  ]
+  useEffect(() => {
+    fetchStudentData()
+  }, [])
+
+  const fetchStudentData = async () => {
+    try {
+      setLoading(true)
+      
+      // For demo purposes, we'll use the actual student email from database
+      // In real implementation, you'd get this from auth/session
+      const studentEmail = "22etcs002132@msruas.ac.in"
+      
+      // Fetch student profile
+      const profileResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+      if (profileResponse.ok) {
+        const profileResult = await profileResponse.json()
+        setStudentProfile(profileResult.data)
+        
+        // Calculate profile completion
+        const profile = profileResult.data
+        let completionScore = 0
+        const totalFields = 10
+        
+        if (profile.first_name) completionScore++
+        if (profile.college_email) completionScore++
+        if (profile.personal_email) completionScore++
+        if (profile.mobile_number) completionScore++
+        if (profile.branch) completionScore++
+        if (profile.college_reg_no) completionScore++
+        if (profile.date_of_birth) completionScore++
+        if (profile.ug_percentage) completionScore++
+        if (profile.resume_url) completionScore++
+        if (profile.placement_status) completionScore++
+        
+        const profileCompletion = Math.round((completionScore / totalFields) * 100)
+        
+        // Fetch applications
+        const appsResponse = await fetch(`/api/student/applications?student_id=${profile.id}`)
+        if (appsResponse.ok) {
+          const appsResult = await appsResponse.json()
+          setRecentApplications(appsResult.data)
+          setStats({
+            ...appsResult.stats,
+            profileCompletion
+          })
+        } else {
+          // If applications API fails, show profile completion at least
+          setStats(prev => ({ ...prev, profileCompletion }))
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching student data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Selected":
+    switch (status.toLowerCase()) {
+      case "placed":
+      case "selected":
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case "Interview Scheduled":
+      case "interview":
+      case "interview_scheduled":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case "Under Review":
+      case "under_review":
+      case "applied":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      case "offered":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
     }
   }
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Selected":
+    switch (status.toLowerCase()) {
+      case "placed":
+      case "selected":
         return <CheckCircle className="w-4 h-4" />
-      case "Interview Scheduled":
+      case "interview":
+      case "interview_scheduled":
         return <Calendar className="w-4 h-4" />
-      case "Under Review":
+      case "under_review":
+      case "applied":
         return <Clock className="w-4 h-4" />
+      case "offered":
+        return <TrendingUp className="w-4 h-4" />
+      case "rejected":
+        return <AlertCircle className="w-4 h-4" />
       default:
         return <AlertCircle className="w-4 h-4" />
+    }
+  }
+
+  const formatStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "placed":
+        return "Placed"
+      case "interview":
+        return "Interview Scheduled"
+      case "under_review":
+        return "Under Review"
+      case "applied":
+        return "Applied"
+      case "offered":
+        return "Offer Received"
+      case "rejected":
+        return "Rejected"
+      default:
+        return status
     }
   }
 
@@ -144,34 +210,68 @@ export default function DashboardPage() {
                 <CardDescription>Your latest job applications and their status</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentApplications.map((application) => (
-                    <div
-                      key={application.id}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-gray-50/50 dark:bg-gray-700/50 transition-all duration-200 hover:shadow-md"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{application.company}</h3>
-                          <Badge className={getStatusColor(application.status)}>
-                            <div className="flex items-center gap-1">
-                              {getStatusIcon(application.status)}
-                              {application.status}
-                            </div>
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{application.position}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                          <span>Applied: {application.appliedDate}</span>
-                          <span>Deadline: {application.deadline}</span>
-                        </div>
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse p-4 rounded-lg border bg-gray-50/50">
+                        <div className="h-4 bg-gray-300 rounded w-1/3 mb-2"></div>
+                        <div className="h-3 bg-gray-300 rounded w-1/2 mb-2"></div>
+                        <div className="h-3 bg-gray-300 rounded w-1/4"></div>
                       </div>
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : recentApplications.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentApplications.map((application) => (
+                      <div
+                        key={application.id}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-gray-50/50 dark:bg-gray-700/50 transition-all duration-200 hover:shadow-md"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                              {application.jobs?.company_name || 'Unknown Company'}
+                            </h3>
+                            <Badge className={getStatusColor(application.status)}>
+                              <div className="flex items-center gap-1">
+                                {getStatusIcon(application.status)}
+                                {formatStatus(application.status)}
+                              </div>
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+                            {application.jobs?.title || 'Job Position'}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <span>Applied: {new Date(application.applied_date || application.created_at).toLocaleDateString()}</span>
+                            {application.jobs?.application_deadline && (
+                              <span>Deadline: {new Date(application.jobs.application_deadline).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => router.push(`/jobs/${application.job_id}`)}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No applications found</p>
+                    <p className="text-sm">Start by browsing available jobs</p>
+                    <Button 
+                      className="mt-4" 
+                      onClick={() => router.push('/jobs')}
+                    >
+                      Browse Jobs
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -203,10 +303,6 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-4 h-4" />
                     <span>Academic Details</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-yellow-600">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>Skills & Projects</span>
                   </div>
                 </div>
                 <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">

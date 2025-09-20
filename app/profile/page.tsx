@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { supabaseClient, type StudentDetails, uploadResume } from "@/lib/supabase"
+import { supabaseClient, type StudentDetails, uploadResume, downloadResume } from "@/lib/supabase"
 import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download } from "lucide-react"
 
   const branches = [
@@ -185,6 +185,7 @@ export default function ProfilePage() {
       await downloadResume(student.resume_url, fileName)
       setSuccess("Resume downloaded successfully!")
     } catch (error) {
+      console.error("Download error:", error)
       setError("Failed to download resume. Please try again.")
     }
   }
@@ -579,26 +580,4 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-}
-
-async function downloadResume(resumeUrl: string, fileName: string): Promise<void> {
-  try {
-    const response = await fetch(resumeUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch resume: ${response.status} ${response.statusText}`)
-    }
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = fileName
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  } catch (error: any) {
-    console.error("Download failed:", error)
-    throw new Error(`Failed to download resume: ${error.message || error}`)
-  }
 }
