@@ -6,12 +6,22 @@ const MAX_RESUME_SIZE = 2 * 1024 * 1024 // 2MB
 // Use environment variables or fallback to placeholder
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://your-project-id.supabase.co"
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey || "your-anon-key", {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+  },
+})
+
+// Create admin client with service role key (bypasses RLS)
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey || "your-anon-key", {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
   },
 })
 
@@ -22,8 +32,30 @@ const isDemoMode =
   supabaseUrl === "https://your-project-id.supabase.co" ||
   supabaseAnonKey === "your-anon-key"
 
+// Test network connectivity to Supabase
+const testSupabaseConnectivity = async () => {
+  if (typeof window !== 'undefined' && !isDemoMode) {
+    try {
+      const response = await fetch(`${supabaseUrl}/health`, { 
+        method: 'GET',
+        mode: 'no-cors'  // Allow cross-origin requests
+      })
+      console.log('Supabase connectivity test passed')
+      return true
+    } catch (error) {
+      console.error('Supabase connectivity failed:', error)
+      console.warn('Falling back to demo mode due to connectivity issues')
+      return false
+    }
+  }
+  return !isDemoMode
+}
+
 if (isDemoMode && typeof window !== "undefined") {
   console.warn("⚠️ Running in demo mode. Data will not be saved to Supabase.")
+} else if (typeof window !== "undefined") {
+  console.log(`🔗 Connecting to Supabase at: ${supabaseUrl}`)
+  testSupabaseConnectivity()
 }
 
 // Generate proper UUID for demo mode
@@ -35,14 +67,19 @@ export function generateUUID(): string {
   })
 }
 
+// Helper function to normalize branch name for consistent folder naming
+export function normalizeBranchName(branch: string): string {
+  return branch.toLowerCase().replace(/\s+/g, "-")
+}
+
 // Helper function to get branch-wise resume path
 export function getResumeStoragePath(branch: string, regNo: string): string {
-  const branchFolder = branch.toLowerCase().replace(/\s+/g, "-")
+  const branchFolder = normalizeBranchName(branch)
   return `${RESUME_BUCKET}/resumes/${branchFolder}/${regNo.toUpperCase()}.pdf`
 }
 
-// Helper function to upload resume with branch-wise storage
-export async function uploadResume(file: File, branch: string, regNo: string) {
+// Helper function to upload resume with branch-wise storage and replacement logic
+export async function uploadResume(file: File, branch: string, regNo: string, existingBranch?: string) {
   if (file.type !== "application/pdf") {
     throw new Error("Only PDF files are allowed.")
   }
@@ -58,11 +95,20 @@ export async function uploadResume(file: File, branch: string, regNo: string) {
     })
   }
 
+  // If there's an existing resume with a different branch casing, delete it first
+  if (existingBranch && normalizeBranchName(existingBranch) !== normalizeBranchName(branch)) {
+    try {
+      await deleteResume(existingBranch, regNo)
+    } catch (error) {
+      console.warn("Failed to delete old resume:", error)
+    }
+  }
+
   const filePath = getResumeStoragePath(branch, regNo)
 
   const { data, error } = await supabase.storage.from(RESUME_BUCKET).upload(filePath, file, {
     cacheControl: "3600",
-    upsert: true,
+    upsert: true, // This will replace existing file with same path
   })
 
   if (error) {
@@ -86,7 +132,8 @@ export async function deleteResume(branch: string, regNo: string) {
   const { error } = await supabase.storage.from(RESUME_BUCKET).remove([filePath])
 
   if (error) {
-    throw error
+    console.warn("Failed to delete resume:", error)
+    return false
   }
 
   return true
@@ -408,53 +455,68 @@ const createMockSupabase = () => {
           return callback({ data, error: null })
         },
       }),
-      insert: async (data: any) => {
-        if (table === "student_details") {
-          const profileData = { ...mockStudentData, ...data, id: generateUUID() }
-          localStorage.setItem("student_profile", JSON.stringify(profileData))
+      insert: (data: any) => {
+        const mockInsert = async () => {
+          if (table === "student_details") {
+            const profileData = { ...mockStudentData, ...data, id: generateUUID() }
+            localStorage.setItem("student_profile", JSON.stringify(profileData))
 
-          const allStudents = JSON.parse(localStorage.getItem("all_students") || "[]")
-          allStudents.push(profileData)
-          localStorage.setItem("all_students", JSON.stringify(allStudents))
+            const allStudents = JSON.parse(localStorage.getItem("all_students") || "[]")
+            allStudents.push(profileData)
+            localStorage.setItem("all_students", JSON.stringify(allStudents))
 
-          return { data: profileData, error: null }
-        }
-        if (table === "jobs") {
-          const jobData = { ...data, id: generateUUID(), created_at: new Date().toISOString() }
-          const existingJobs = JSON.parse(localStorage.getItem("all_jobs") || JSON.stringify(mockJobs))
-          existingJobs.push(jobData)
-          localStorage.setItem("all_jobs", JSON.stringify(existingJobs))
+            return { data: profileData, error: null }
+          }
+          if (table === "jobs") {
+            const jobData = { 
+              ...data, 
+              id: generateUUID(), 
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+            const existingJobs = JSON.parse(localStorage.getItem("all_jobs") || JSON.stringify(mockJobs))
+            existingJobs.push(jobData)
+            localStorage.setItem("all_jobs", JSON.stringify(existingJobs))
 
-          // Add to recent activities
-          const activities = JSON.parse(localStorage.getItem("recent_activities") || "[]")
-          activities.unshift({
-            id: generateUUID(),
-            type: "job_posted",
-            title: "New job posted",
-            description: `${jobData.company_name} - ${jobData.title}`,
-            timestamp: new Date().toISOString(),
-          })
-          localStorage.setItem("recent_activities", JSON.stringify(activities.slice(0, 10)))
+            // Add to recent activities
+            const activities = JSON.parse(localStorage.getItem("recent_activities") || "[]")
+            activities.unshift({
+              id: generateUUID(),
+              type: "job_posted",
+              title: "New job posted",
+              description: `${jobData.company_name} - ${jobData.title}`,
+              timestamp: new Date().toISOString(),
+            })
+            localStorage.setItem("recent_activities", JSON.stringify(activities.slice(0, 10)))
 
-          return { data: jobData, error: null }
+            return { data: jobData, error: null }
+          }
+          if (table === "grievance_reports") {
+            const grievanceData = { ...data, id: generateUUID(), created_at: new Date().toISOString() }
+            const existingGrievances = JSON.parse(
+              localStorage.getItem("all_grievances") || JSON.stringify(mockGrievances),
+            )
+            existingGrievances.push(grievanceData)
+            localStorage.setItem("all_grievances", JSON.stringify(existingGrievances))
+            return { data: grievanceData, error: null }
+          }
+          if (table === "application_status") {
+            const applicationData = { ...data, id: generateUUID(), applied_at: new Date().toISOString() }
+            const existingApplications = JSON.parse(localStorage.getItem("all_applications") || "[]")
+            existingApplications.push(applicationData)
+            localStorage.setItem("all_applications", JSON.stringify(existingApplications))
+            return { data: applicationData, error: null }
+          }
+          return { data, error: null }
         }
-        if (table === "grievance_reports") {
-          const grievanceData = { ...data, id: generateUUID(), created_at: new Date().toISOString() }
-          const existingGrievances = JSON.parse(
-            localStorage.getItem("all_grievances") || JSON.stringify(mockGrievances),
-          )
-          existingGrievances.push(grievanceData)
-          localStorage.setItem("all_grievances", JSON.stringify(existingGrievances))
-          return { data: grievanceData, error: null }
+
+        return {
+          select: (columns?: string) => ({
+            single: () => mockInsert(),
+            then: (callback: any) => mockInsert().then(callback),
+          }),
+          then: (callback: any) => mockInsert().then(callback),
         }
-        if (table === "application_status") {
-          const applicationData = { ...data, id: generateUUID(), applied_at: new Date().toISOString() }
-          const existingApplications = JSON.parse(localStorage.getItem("all_applications") || "[]")
-          existingApplications.push(applicationData)
-          localStorage.setItem("all_applications", JSON.stringify(existingApplications))
-          return { data: applicationData, error: null }
-        }
-        return { data, error: null }
       },
       update: (data: any) => ({
         eq: (column: string, value: any) => ({
@@ -514,7 +576,19 @@ const createRealSupabase = () => {
           then: (callback: any) => query.then(callback),
         }
       },
-      insert: (data: any) => supabase.from(table).insert(data),
+      insert: (data: any) => {
+        const insertQuery = supabase.from(table).insert(data)
+        return {
+          select: (columns?: string) => {
+            const selectQuery = insertQuery.select(columns || "*")
+            return {
+              single: () => selectQuery.single(),
+              then: (callback: any) => selectQuery.then(callback),
+            }
+          },
+          then: (callback: any) => insertQuery.then(callback),
+        }
+      },
       update: (data: any) => ({
         eq: (column: string, value: any) => supabase.from(table).update(data).eq(column, value),
       }),
@@ -526,7 +600,48 @@ const createRealSupabase = () => {
   }
 }
 
+// Create admin client that uses service role key
+const createAdminSupabase = () => {
+  const adminClient = supabaseServiceKey && !isDemoMode ? supabaseAdmin : supabase
+  
+  return {
+    auth: adminClient.auth,
+    from: (table: string) => ({
+      select: (columns?: string) => {
+        const query = adminClient.from(table).select(columns || "*")
+        return {
+          eq: (column: string, value: any) => ({
+            single: () => query.eq(column, value).single(),
+          }),
+          then: (callback: any) => query.then(callback),
+        }
+      },
+      insert: (data: any) => {
+        const insertQuery = adminClient.from(table).insert(data)
+        return {
+          select: (columns?: string) => {
+            const selectQuery = insertQuery.select(columns || "*")
+            return {
+              single: () => selectQuery.single(),
+              then: (callback: any) => selectQuery.then(callback),
+            }
+          },
+          then: (callback: any) => insertQuery.then(callback),
+        }
+      },
+      update: (data: any) => ({
+        eq: (column: string, value: any) => adminClient.from(table).update(data).eq(column, value),
+      }),
+      delete: () => ({
+        eq: (column: string, value: any) => adminClient.from(table).delete().eq(column, value),
+      }),
+    }),
+    storage: adminClient.storage,
+  }
+}
+
 export const supabaseClient = isDemoMode ? createMockSupabase() : createRealSupabase()
+export const supabaseAdminClient = isDemoMode ? createMockSupabase() : createAdminSupabase()
 
 // Database types
 export interface StudentDetails {

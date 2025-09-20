@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from 'next/font/google'
 import "./globals.css"
 import { ThemeProvider } from "@/contexts/theme-context"
-import { MouseTrail } from "@/components/mouse-trail"
 import { ScrollToTop } from "@/components/ui/scroll-to-top"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -23,7 +22,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider defaultTheme="light" storageKey="campus-portal-theme">
-          <MouseTrail />
           {children}
           <ScrollToTop />
         </ThemeProvider>

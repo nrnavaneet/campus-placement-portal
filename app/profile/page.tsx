@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { supabaseClient, type StudentDetails } from "@/lib/supabase"
+import { supabaseClient, type StudentDetails, uploadResume } from "@/lib/supabase"
 import { Upload, FileText, CheckCircle, AlertCircle, User, Save, Download } from "lucide-react"
 
   const branches = [
@@ -144,7 +144,7 @@ export default function ProfilePage() {
       let resumeUrl = student.resume_url
       if (resumeFile) {
         try {
-          const { publicUrl } = await uploadResume(resumeFile, student.branch, student.college_reg_no)
+          const { publicUrl } = await uploadResume(resumeFile, student.branch, student.college_reg_no, student.branch)
           resumeUrl = publicUrl
         } catch (uploadError) {
           console.warn("Resume upload failed:", uploadError)
@@ -579,19 +579,6 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-}
-
-async function uploadResume(resumeFile: File, branch: string, college_reg_no: string): Promise<{ publicUrl: string }> {
-  const resumePath = `placements/resumes/${branch}/${college_reg_no}.pdf`
-  const { data, error: uploadError } = await supabaseClient.storage.from("placements").upload(resumePath, resumeFile, {
-    cacheControl: "3600",
-    upsert: true,
-  })
-
-  if (uploadError) throw uploadError
-
-  const { data: publicData } = supabaseClient.storage.from("placements").getPublicUrl(resumePath)
-  return { publicUrl: publicData.publicUrl }
 }
 
 async function downloadResume(resumeUrl: string, fileName: string): Promise<void> {

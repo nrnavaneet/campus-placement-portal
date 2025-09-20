@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,22 @@ export default function AdminDashboard() {
   const [filterJobStatus, setFilterJobStatus] = useState("all")
   const [selectedJobForExport, setSelectedJobForExport] = useState("all")
   const [isAddJobOpen, setIsAddJobOpen] = useState(false)
+  const [isEditJobOpen, setIsEditJobOpen] = useState(false)
+  const [isViewJobOpen, setIsViewJobOpen] = useState(false)
+  const [isDeleteJobOpen, setIsDeleteJobOpen] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [editJob, setEditJob] = useState({
+    title: "",
+    company_name: "",
+    description: "",
+    package_min: "",
+    package_max: "",
+    min_ug_percentage: "",
+    branches_allowed: [] as string[],
+    no_backlogs_required: true,
+    application_deadline: "",
+    status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
+  })
   const [isGrievanceDialogOpen, setIsGrievanceDialogOpen] = useState(false)
   const [selectedGrievance, setSelectedGrievance] = useState<GrievanceReport | null>(null)
   const [adminResponse, setAdminResponse] = useState("")
@@ -79,7 +96,7 @@ export default function AdminDashboard() {
     branches_allowed: [] as string[],
     no_backlogs_required: true,
     application_deadline: "",
-    status: "upcoming" as const,
+    status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
   })
   const { theme, setTheme } = useTheme()
   const router = useRouter()
@@ -130,39 +147,93 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch students
-      const allStudents = JSON.parse(localStorage.getItem("all_students") || "[]")
-      setStudents(allStudents)
-
-      // Fetch jobs from both Supabase and localStorage
-      let allJobs = []
+      console.log('🔄 Fetching admin dashboard data...')
+      
+      // Fetch students from database
+      let allStudents: StudentDetails[] = []
       try {
-        const { data: jobsData } = await supabaseClient.from("jobs").select("*")
-        if (jobsData) {
-          allJobs = [...jobsData]
+        const response = await fetch('/api/admin/students')
+        const result = await response.json()
+        
+        if (response.ok && result.data) {
+          allStudents = result.data
+          console.log('👥 Students fetched:', allStudents.length, allStudents)
+        } else {
+          console.error("Failed to fetch students:", result.error)
         }
       } catch (error) {
-        console.log("Using localStorage for jobs")
+        console.error("Error fetching students:", error)
       }
 
-      // Add jobs from localStorage (admin created)
-      const localJobs = JSON.parse(localStorage.getItem("all_jobs") || "[]")
-      allJobs = [...allJobs, ...localJobs]
+      setStudents(allStudents)
 
-      // Remove duplicates based on ID
-      const uniqueJobs = allJobs.filter((job, index, self) => index === self.findIndex((j) => j.id === job.id))
+      // Fetch jobs from database only (no fake jobs)
+      let allJobs: Job[] = []
+      try {
+        const response = await fetch('/api/admin/jobs')
+        const result = await response.json()
+        
+        if (response.ok && result.data) {
+          allJobs = result.data
+          console.log('💼 Jobs fetched:', allJobs.length, 'Active jobs:', allJobs.filter(j => j.status === 'active').length)
+        } else {
+          console.error("Failed to fetch jobs:", result.error)
+        }
+      } catch (error) {
+        console.error("Error fetching jobs:", error)
+      }
 
-      setJobs(uniqueJobs)
+      setJobs(allJobs)
 
-      // Fetch grievances
-      const allGrievances = JSON.parse(localStorage.getItem("all_grievances") || "[]")
+      // Fetch grievances from database
+      let allGrievances: GrievanceReport[] = []
+      try {
+        const response = await fetch('/api/admin/grievances')
+        const result = await response.json()
+        
+        if (response.ok && result.data) {
+          allGrievances = result.data
+          console.log('📝 Grievances fetched:', allGrievances.length, 'Pending:', allGrievances.filter(g => g.status === 'submitted').length)
+        } else {
+          console.error("Failed to fetch grievances:", result.error)
+        }
+      } catch (error) {
+        console.error("Error fetching grievances:", error)
+      }
+
       setGrievances(allGrievances)
 
-      // Fetch recent activities
-      const activities = JSON.parse(localStorage.getItem("recent_activities") || "[]")
-      setRecentActivities(activities)
+      // Fetch applications from database
+      let allApplications: any[] = []
+      try {
+        const response = await fetch('/api/admin/applications')
+        const result = await response.json()
+        
+        if (response.ok && result.data) {
+          allApplications = result.data
+          console.log('📋 Applications fetched:', allApplications.length)
+        } else {
+          console.error("Failed to fetch applications:", result.error)
+        }
+      } catch (error) {
+        console.error("Error fetching applications:", error)
+      }
 
-      // Calculate stats
+      // Fetch recent activities from database
+      try {
+        const response = await fetch('/api/admin/activities')
+        if (response.ok) {
+          const result = await response.json()
+          setRecentActivities(result.data || [])
+          console.log('🔔 Activities fetched:', result.data?.length || 0)
+        } else {
+          console.error("Error fetching activities:", response.statusText)
+        }
+      } catch (error) {
+        console.error("Error fetching activities:", error)
+      }
+
+      // Calculate stats using real database data
       const placedCount = allStudents.filter((s: StudentDetails) => s.placement_status.accepted_offers > 0).length
       const totalPackages = allStudents
         .filter((s: StudentDetails) => s.placement_status.max_ctc > 0)
@@ -170,14 +241,17 @@ export default function AdminDashboard() {
       const avgPackage = placedCount > 0 ? totalPackages / placedCount / 100000 : 0
       const pendingGrievances = allGrievances.filter((g: GrievanceReport) => g.status === "submitted").length
 
-      setStats({
+      const calculatedStats = {
         totalStudents: allStudents.length,
-        activeJobs: uniqueJobs.filter((j: Job) => j.status === "active").length,
-        totalApplications: JSON.parse(localStorage.getItem("all_applications") || "[]").length,
+        activeJobs: allJobs.filter((j: Job) => j.status === "active").length,
+        totalApplications: allApplications.length,
         pendingGrievances,
         placedStudents: placedCount,
         averagePackage: Math.round(avgPackage * 10) / 10,
-      })
+      }
+
+      console.log('📊 Calculated stats:', calculatedStats)
+      setStats(calculatedStats)
     } catch (error) {
       console.error("Error fetching data:", error)
     }
@@ -197,53 +271,82 @@ export default function AdminDashboard() {
   }
 
   const handleAddJob = async () => {
-    if (!newJob.title || !newJob.company_name || !newJob.description) {
-      setError("Please fill in all required fields")
+    setError(null)
+    setSuccess(null)
+
+    // Enhanced validation
+    if (!newJob.title?.trim()) {
+      setError("Job title is required")
       return
     }
-
+    if (!newJob.company_name?.trim()) {
+      setError("Company name is required")
+      return
+    }
+    if (!newJob.description?.trim()) {
+      setError("Job description is required")
+      return
+    }
     if (newJob.branches_allowed.length === 0) {
       setError("Please select at least one eligible branch")
       return
     }
+    if (!newJob.min_ug_percentage || Number.parseFloat(newJob.min_ug_percentage) <= 0) {
+      setError("Valid minimum UG percentage is required")
+      return
+    }
 
     const jobData = {
-      id: generateUUID(),
-      title: newJob.title,
-      company_name: newJob.company_name,
-      company_logo: `/placeholder.svg?height=60&width=60&text=${newJob.company_name.substring(0, 2).toUpperCase()}`,
-      description: newJob.description,
-      package_min: Number.parseInt(newJob.package_min) || 0,
-      package_max: Number.parseInt(newJob.package_max) || 0,
-      min_ug_percentage: Number.parseFloat(newJob.min_ug_percentage) || 0,
+      title: newJob.title.trim(),
+      company_name: newJob.company_name.trim(),
+      company_logo: `/placeholder.svg?height=60&width=60&text=${newJob.company_name.trim().substring(0, 2).toUpperCase()}`,
+      description: newJob.description.trim(),
+      package_min: newJob.package_min ? Number.parseFloat(newJob.package_min) : null,
+      package_max: newJob.package_max ? Number.parseFloat(newJob.package_max) : null,
+      min_ug_percentage: Number.parseFloat(newJob.min_ug_percentage),
       branches_allowed: newJob.branches_allowed,
       no_backlogs_required: newJob.no_backlogs_required,
       counts_as_offer: true,
       eligibility_criteria: {
         experience: "0-2 years",
         skills: [],
+        backlogs_allowed: !newJob.no_backlogs_required,
       },
       timeline: [
-        { stage: "Application", date: newJob.application_deadline, description: "Submit application with resume" },
+        { stage: "Application", date: newJob.application_deadline || "", description: "Submit application with resume" },
         { stage: "Review", date: "", description: "Application review process" },
         { stage: "Interview", date: "", description: "Interview rounds" },
         { stage: "Result", date: "", description: "Final selection results" },
       ],
       status: newJob.status,
-      application_deadline: newJob.application_deadline,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      application_deadline: newJob.application_deadline ? new Date(newJob.application_deadline).toISOString() : null,
     }
 
     try {
-      const { error: insertError } = await supabaseClient.from("jobs").insert(jobData)
+      console.log("Creating job with data:", jobData)
+      
+      // Use server-side API route that has access to service role key
+      const response = await fetch('/api/admin/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jobData),
+      })
 
-      if (insertError) {
-        console.error("Insert error:", insertError)
+      const result = await response.json()
+      console.log("API response:", result)
+
+      if (!response.ok) {
+        console.error("API error:", result.error)
+        setError(`Failed to create job: ${result.error}`)
+        return
       }
 
-      // Update local state immediately
-      setJobs((prevJobs) => [...prevJobs, jobData])
+      // Update local state with the returned data
+      if (result.data) {
+        setJobs((prevJobs) => [...prevJobs, result.data])
+      }
       setIsAddJobOpen(false)
 
       // Reset form
@@ -260,11 +363,126 @@ export default function AdminDashboard() {
         status: "upcoming",
       })
 
+      setError(null)
       setSuccess("Job posted successfully!")
       fetchData() // Refresh data
     } catch (error: any) {
       console.error("Error adding job:", error)
       setError(error.message || "Failed to create job")
+    }
+  }
+
+  // Job management handlers
+  const handleViewJob = (job: Job) => {
+    setSelectedJob(job)
+    setIsViewJobOpen(true)
+  }
+
+  const handleEditJob = (job: Job) => {
+    setSelectedJob(job)
+    setEditJob({
+      title: job.title,
+      company_name: job.company_name,
+      description: job.description,
+      package_min: job.package_min?.toString() || "",
+      package_max: job.package_max?.toString() || "",
+      min_ug_percentage: job.min_ug_percentage?.toString() || "",
+      branches_allowed: job.branches_allowed || [],
+      no_backlogs_required: job.no_backlogs_required || true,
+      application_deadline: job.application_deadline ? new Date(job.application_deadline).toISOString().split('T')[0] : "",
+      status: job.status,
+    })
+    setIsEditJobOpen(true)
+  }
+
+  const handleDeleteJob = (job: Job) => {
+    setSelectedJob(job)
+    setIsDeleteJobOpen(true)
+  }
+
+  const confirmDeleteJob = async () => {
+    if (!selectedJob) return
+
+    try {
+      const response = await fetch(`/api/admin/jobs?id=${selectedJob.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete job')
+      }
+
+      // Remove from local state
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== selectedJob.id))
+      setIsDeleteJobOpen(false)
+      setSelectedJob(null)
+      setSuccess("Job deleted successfully!")
+      fetchData() // Refresh data including activities
+    } catch (error: any) {
+      setError(error.message || "Failed to delete job")
+    }
+  }
+
+  const saveEditJob = async () => {
+    if (!selectedJob) return
+
+    setError(null)
+    setSuccess(null)
+
+    // Validation
+    if (!editJob.title?.trim()) {
+      setError("Job title is required")
+      return
+    }
+    if (!editJob.company_name?.trim()) {
+      setError("Company name is required")
+      return
+    }
+    if (!editJob.description?.trim()) {
+      setError("Job description is required")
+      return
+    }
+
+    const updatedJobData = {
+      ...selectedJob,
+      title: editJob.title.trim(),
+      company_name: editJob.company_name.trim(),
+      description: editJob.description.trim(),
+      package_min: editJob.package_min ? Number.parseFloat(editJob.package_min) : null,
+      package_max: editJob.package_max ? Number.parseFloat(editJob.package_max) : null,
+      min_ug_percentage: Number.parseFloat(editJob.min_ug_percentage),
+      branches_allowed: editJob.branches_allowed,
+      no_backlogs_required: editJob.no_backlogs_required,
+      application_deadline: editJob.application_deadline ? new Date(editJob.application_deadline).toISOString() : null,
+      status: editJob.status,
+      updated_at: new Date().toISOString(),
+    }
+
+    try {
+      // Use server-side API route for updating job (to be implemented)
+      const response = await fetch(`/api/admin/jobs/${selectedJob.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedJobData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update job')
+      }
+
+      const result = await response.json()
+
+      // Update local state
+      setJobs(prevJobs => prevJobs.map(job => job.id === selectedJob.id ? result.data : job))
+      setIsEditJobOpen(false)
+      setSelectedJob(null)
+      setSuccess("Job updated successfully!")
+    } catch (error: any) {
+      setError(error.message || "Failed to update job")
     }
   }
 
@@ -282,7 +500,15 @@ export default function AdminDashboard() {
         updated_at: new Date().toISOString(),
       }
 
-      await supabaseClient.from("grievance_reports").update(updatedGrievance).eq("id", selectedGrievance.id)
+      const updateResult = supabaseClient.from("grievance_reports").update(updatedGrievance).eq("id", selectedGrievance.id)
+      
+      await new Promise((resolve) => {
+        if ('then' in updateResult) {
+          updateResult.then(resolve)
+        } else {
+          resolve(updateResult)
+        }
+      })
 
       setGrievances(grievances.map((g) => (g.id === selectedGrievance.id ? updatedGrievance : g)))
       setIsGrievanceDialogOpen(false)
@@ -666,6 +892,21 @@ ${reportData.companyWiseData
                         <DialogTitle>Add New Job</DialogTitle>
                         <DialogDescription>Create a new job posting for students</DialogDescription>
                       </DialogHeader>
+                      
+                      {error && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {success && (
+                        <Alert className="border-green-200 bg-green-50 text-green-800">
+                          <CheckCircle className="h-4 w-4" />
+                          <AlertDescription>{success}</AlertDescription>
+                        </Alert>
+                      )}
+                      
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -733,6 +974,45 @@ ${reportData.companyWiseData
                               onChange={(e) => setNewJob({ ...newJob, min_ug_percentage: e.target.value })}
                               placeholder="70.0"
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Backlogs Allowed?</Label>
+                            <Select
+                              value={newJob.no_backlogs_required ? "no" : "yes"}
+                              onValueChange={(value) => 
+                                setNewJob({ ...newJob, no_backlogs_required: value === "no" })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select backlogs criteria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="no">No Backlogs Required</SelectItem>
+                                <SelectItem value="yes">Backlogs Allowed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Job Status</Label>
+                            <Select
+                              value={newJob.status}
+                              onValueChange={(value: "upcoming" | "active" | "ongoing" | "closed") => 
+                                setNewJob({ ...newJob, status: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="upcoming">Upcoming</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="ongoing">Ongoing</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="deadline">Application Deadline</Label>
@@ -837,14 +1117,13 @@ ${reportData.companyWiseData
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
-                <Dialog open={isAddJobOpen} onOpenChange={setIsAddJobOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New Job
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  onClick={() => setIsAddJobOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New Job
+                </Button>
               </div>
             </div>
 
@@ -909,15 +1188,15 @@ ${reportData.companyWiseData
                     </div>
 
                     <div className="flex justify-between items-center pt-4 border-t">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleViewJob(job)}>
                         <Eye className="w-4 h-4 mr-2" />
                         View
                       </Button>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleEditJob(job)}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteJob(job)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -1267,6 +1546,221 @@ ${reportData.companyWiseData
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Job Management Dialogs */}
+        
+        {/* View Job Dialog */}
+        <Dialog open={isViewJobOpen} onOpenChange={setIsViewJobOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Job Details</DialogTitle>
+            </DialogHeader>
+            {selectedJob && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">Job Title</Label>
+                    <p className="text-lg">{selectedJob.title}</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Company</Label>
+                    <p className="text-lg">{selectedJob.company_name}</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Status</Label>
+                    <Badge className={
+                      selectedJob.status === "active"
+                        ? "bg-green-100 text-green-800"
+                        : selectedJob.status === "upcoming"
+                          ? "bg-blue-100 text-blue-800"
+                          : selectedJob.status === "ongoing"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                    }>
+                      {selectedJob.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Application Deadline</Label>
+                    <p>{selectedJob.application_deadline ? new Date(selectedJob.application_deadline).toLocaleDateString() : 'Not specified'}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="font-medium">Description</Label>
+                  <p className="mt-2 text-gray-700 dark:text-gray-300">{selectedJob.description}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium">Package Range</Label>
+                    <p>₹{selectedJob.package_min ? (selectedJob.package_min / 100000).toFixed(1) : '0'}L - ₹{selectedJob.package_max ? (selectedJob.package_max / 100000).toFixed(1) : '0'}L</p>
+                  </div>
+                  <div>
+                    <Label className="font-medium">Minimum UG Percentage</Label>
+                    <p>{selectedJob.min_ug_percentage}%</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="font-medium">Eligible Branches</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedJob.branches_allowed?.map((branch) => (
+                      <Badge key={branch} variant="outline">{branch}</Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="font-medium">Backlogs Policy</Label>
+                  <p>{selectedJob.no_backlogs_required ? 'No backlogs allowed' : 'Backlogs allowed'}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Job Dialog */}
+        <Dialog open={isEditJobOpen} onOpenChange={setIsEditJobOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Job</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Job Title *</Label>
+                  <Input
+                    id="edit-title"
+                    value={editJob.title}
+                    onChange={(e) => setEditJob({ ...editJob, title: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-company">Company Name *</Label>
+                  <Input
+                    id="edit-company"
+                    value={editJob.company_name}
+                    onChange={(e) => setEditJob({ ...editJob, company_name: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Job Description *</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editJob.description}
+                  onChange={(e) => setEditJob({ ...editJob, description: e.target.value })}
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-package-min">Minimum Package (₹)</Label>
+                  <Input
+                    id="edit-package-min"
+                    type="number"
+                    value={editJob.package_min}
+                    onChange={(e) => setEditJob({ ...editJob, package_min: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-package-max">Maximum Package (₹)</Label>
+                  <Input
+                    id="edit-package-max"
+                    type="number"
+                    value={editJob.package_max}
+                    onChange={(e) => setEditJob({ ...editJob, package_max: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-ug-percentage">Min UG Percentage *</Label>
+                  <Input
+                    id="edit-ug-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editJob.min_ug_percentage}
+                    onChange={(e) => setEditJob({ ...editJob, min_ug_percentage: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-deadline">Application Deadline</Label>
+                  <Input
+                    id="edit-deadline"
+                    type="date"
+                    value={editJob.application_deadline}
+                    onChange={(e) => setEditJob({ ...editJob, application_deadline: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Job Status</Label>
+                <Select value={editJob.status} onValueChange={(value) => setEditJob({ ...editJob, status: value as any })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="ongoing">Ongoing</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {error && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsEditJobOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveEditJob}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Job Dialog */}
+        <Dialog open={isDeleteJobOpen} onOpenChange={setIsDeleteJobOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Job</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this job? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedJob && (
+              <div className="space-y-4">
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <h3 className="font-medium">{selectedJob.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{selectedJob.company_name}</p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsDeleteJobOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={confirmDeleteJob}>
+                    Delete Job
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

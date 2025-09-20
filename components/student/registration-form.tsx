@@ -202,16 +202,17 @@ export function RegistrationForm() {
         }
       }
 
-      // Insert student details with proper UUID
+      // Prepare student data
       const studentData = {
         id: generateUUID(),
         user_id: userId,
-        first_name: formData.firstName,
+        name: formData.firstName, // Changed from first_name to name for API consistency
         gender: formData.gender as "Male" | "Female" | "Other",
         college_reg_no: formData.collegeRegNo.toUpperCase(),
         pwd: formData.pwd === "yes",
         date_of_birth: formData.dateOfBirth,
         college_email: formData.collegeEmail,
+        email: formData.personalEmail, // Added email field for API
         personal_email: formData.personalEmail,
         mobile_number: formData.mobileNumber,
         branch: formData.branch,
@@ -228,12 +229,24 @@ export function RegistrationForm() {
         updated_at: new Date().toISOString(),
       }
 
-      const { error: insertError } = await supabaseClient.from("student_details").insert(studentData)
+      // Use admin API route for registration to track activities
+      const response = await fetch('/api/admin/registrations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(studentData),
+      })
 
-      if (insertError) throw insertError
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Registration failed')
+      }
+
+      const result = await response.json()
 
       // Store student data in localStorage for demo
-      localStorage.setItem("student_profile", JSON.stringify(studentData))
+      localStorage.setItem("student_profile", JSON.stringify(result.data))
 
       router.push("/dashboard")
     } catch (error: any) {

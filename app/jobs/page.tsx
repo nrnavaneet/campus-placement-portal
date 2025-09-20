@@ -123,34 +123,32 @@ export default function JobsPage() {
         calculateProfileCompletion(studentData)
       }
 
-      // Fetch jobs from multiple sources
-      let allJobs = []
+      // Fetch jobs from database only (no fake/mock jobs)
+      let allJobs: Job[] = []
 
       try {
-        // Try to fetch from Supabase first
-        const { data: supabaseJobs } = await supabaseClient.from("jobs").select("*")
-        if (supabaseJobs) {
-          allJobs = [...supabaseJobs]
+        // Use the wrapped client to handle the async operation properly
+        const result = await new Promise((resolve) => {
+          const query = supabaseClient.from("jobs").select("*")
+          if ('then' in query) {
+            query.then(resolve)
+          } else {
+            resolve(query)
+          }
+        }) as any
+        
+        if (result && result.data) {
+          allJobs = result.data
         }
       } catch (error) {
-        console.log("Supabase not available, using local data")
+        console.log("Error fetching jobs from database:", error)
       }
 
-      // Get jobs from localStorage (admin added jobs)
-      const localJobs = JSON.parse(localStorage.getItem("all_jobs") || "[]")
-      allJobs = [...allJobs, ...localJobs]
-
-      // Add mock jobs if no jobs exist
-      if (allJobs.length === 0) {
-        allJobs = mockJobs
-      }
-
-      // Remove duplicates based on ID and sort by created date
-      const uniqueJobs = allJobs
-        .filter((job, index, self) => index === self.findIndex((j) => j.id === job.id))
+      // Sort by created date (newest first)
+      const sortedJobs = allJobs
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      setJobs(uniqueJobs)
+      setJobs(sortedJobs)
     } catch (error) {
       console.error("Error fetching data:", error)
       // Fallback to mock data
@@ -383,7 +381,7 @@ export default function JobsPage() {
             </Button>
             <Button
               onClick={() => handleApply(job.id)}
-              disabled={isExpired || (student && !eligibilityCheck.eligible)}
+              disabled={isExpired || (student && eligibilityCheck?.eligible !== true) || false}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 w-full sm:w-auto"
             >
               {isExpired

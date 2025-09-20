@@ -1,0 +1,107 @@
+
+> my-v0-project@0.1.0 dev /Users/nrnavaneet/Documents/Projects/campus-placement-portal
+> next dev
+
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.29.58:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1738ms
+ ○ Compiling /api/admin/activities ...
+ ✓ Compiled /api/admin/activities in 744ms (454 modules)
+Database error: {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.placement_statistics'",
+  message: "Could not find the table 'public.recent_activities' in the schema cache"
+}
+ GET /api/admin/activities 500 in 1665ms
+ ✓ Compiled in 319ms (454 modules)
+ GET /api/admin/activities 200 in 587ms
+ ✓ Compiled /api/admin/jobs in 296ms (456 modules)
+ POST /api/admin/jobs 200 in 949ms
+ GET /api/admin/jobs 200 in 293ms
+ GET /api/admin/activities 200 in 167ms
+ POST /api/admin/jobs 200 in 462ms
+ GET /api/admin/activities 200 in 169ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 2.6s (1231 modules)
+ GET /admin?id=d47cb8e5-d112-48c3-83a4-07c6e11591e1&vscodeBrowserReqId=1758380024878 200 in 3179ms
+ ✓ Compiled in 611ms (508 modules)
+ ✓ Compiled in 110ms (508 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 915ms (1227 modules)
+ GET / 200 in 1188ms
+ GET /admin 200 in 192ms
+ ✓ Compiled in 1927ms (1144 modules)
+ GET /admin 200 in 193ms
+ ✓ Compiled /api/admin/jobs in 272ms (729 modules)
+ GET /api/admin/jobs 200 in 782ms
+ ✓ Compiled /api/admin/activities in 178ms (731 modules)
+ GET /api/admin/activities 200 in 496ms
+ GET /api/admin/jobs 200 in 175ms
+ GET /admin 200 in 366ms
+ ✓ Compiled in 1192ms (1243 modules)
+ ✓ Compiled in 860ms (1233 modules)
+ ✓ Compiled in 697ms (1136 modules)
+ ✓ Compiled in 1236ms (1136 modules)
+ ○ Compiling /api/admin/students ...
+ ✓ Compiled /api/admin/students in 762ms (1219 modules)
+ GET /api/admin/students 200 in 1439ms
+ ✓ Compiled in 213ms (512 modules)
+ ✓ Compiled in 372ms (512 modules)
+ ✓ Compiled /api/admin/grievances in 249ms (1221 modules)
+ GET /api/admin/grievances 200 in 691ms
+ ✓ Compiled /api/admin/applications in 361ms (1223 modules)
+ GET /api/admin/applications 200 in 578ms
+ GET /admin 200 in 290ms
+ ✓ Compiled /api/admin/jobs in 409ms (721 modules)
+ POST /api/admin/jobs 200 in 986ms
+ ○ Compiling /jobs ...
+ ✓ Compiled /jobs in 1319ms (1163 modules)
+ GET /jobs 200 in 1767ms
+ ✓ Compiled /api/admin/students in 380ms (743 modules)
+ GET /api/admin/students 200 in 1338ms
+ ✓ Compiled /api/admin/jobs in 173ms (745 modules)
+ GET /api/admin/jobs 200 in 429ms
+ GET /api/admin/jobs 200 in 472ms
+ GET /api/admin/students 200 in 222ms
+ ✓ Compiled /api/admin/grievances in 196ms (747 modules)
+ GET /api/admin/grievances 200 in 517ms
+ ✓ Compiled /api/admin/applications in 223ms (749 modules)
+ GET /api/admin/applications 200 in 600ms
+ GET /api/admin/students 200 in 239ms
+ GET /api/admin/grievances 200 in 315ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 880ms (1266 modules)
+ DELETE /api/admin/grievances/58ecadc4-db00-4cd3-a8ac-e4a1fb8ef1bf 404 in 1054ms
+ GET /admin 200 in 432ms
+ GET /api/admin/students 200 in 842ms
+ GET /api/admin/students 200 in 152ms
+ ✓ Compiled /api/admin/jobs in 215ms (746 modules)
+ GET /api/admin/jobs 200 in 436ms
+ ✓ Compiled /api/admin/grievances in 143ms (748 modules)
+ GET /api/admin/grievances 200 in 434ms
+ ✓ Compiled /api/admin/applications in 190ms (750 modules)
+ GET /api/admin/applications 200 in 546ms
+ ○ Compiling /api/admin/activities ...
+ ✓ Compiled /api/admin/activities in 891ms (752 modules)
+ GET /api/admin/activities 200 in 1170ms
+ GET /admin 200 in 171ms
+ GET /jobs 200 in 167ms
+ ✓ Compiled in 2.6s (1286 modules)
+ GET /api/admin/students 200 in 314ms
+ ✓ Compiled in 960ms (1282 modules)
+ GET /api/admin/students 200 in 338ms
+ GET /api/admin/jobs 200 in 188ms
+ ○ Compiling /api/admin/clear-cache ...
+ ✓ Compiled /api/admin/clear-cache in 744ms (1264 modules)
+ POST /api/admin/clear-cache 200 in 837ms
+ GET /admin?id=888f7532-9ab6-4591-b508-ae7b747870af&vscodeBrowserReqId=1758380754913 200 in 369ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1038ms (755 modules)
+ GET / 200 in 1302ms
+ GET /api/admin/students 200 in 319ms
+ GET /api/admin/jobs 200 in 192ms

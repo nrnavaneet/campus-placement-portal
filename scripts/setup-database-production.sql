@@ -405,6 +405,31 @@ INSERT INTO public.grievance_reports (student_reg_no, student_name, issue_type, 
     'resolved',
     'We have updated the eligibility criteria for several positions to include Mechanical Engineering.'
 )
+CREATE TABLE IF NOT EXISTS public.recent_activities (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    title TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    description TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert sample activities for testing
+INSERT INTO public.recent_activities (title, type, description) VALUES
+('Welcome to Campus Placement Portal', 'system', 'System initialization completed'),
+('Database setup completed', 'system', 'All tables and initial data created')
+ON CONFLICT DO NOTHING;
+
+-- Enable Row Level Security
+ALTER TABLE public.recent_activities ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for recent_activities
+CREATE POLICY "Allow admins to read recent_activities" ON public.recent_activities
+FOR SELECT USING (true);
+
+CREATE POLICY "Allow admins to insert recent_activities" ON public.recent_activities
+FOR INSERT WITH CHECK (true);
+
 ON CONFLICT DO NOTHING;
 
 -- Create a view for placement statistics
@@ -438,6 +463,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
-
+GRANT ALL ON public.recent_activities TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 -- Success message
 SELECT 'Database setup completed successfully! Branch-wise resume storage is configured.' as message;
