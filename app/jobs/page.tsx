@@ -28,6 +28,58 @@ import {
   Download,
 } from "lucide-react"
 
+// Countdown component
+const CountdownTimer = ({ deadline }: { deadline: string }) => {
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number
+    hours: number
+    minutes: number
+    seconds: number
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime()
+      const deadlineTime = new Date(deadline).getTime()
+      const difference = deadlineTime - now
+
+      if (difference > 0) {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((difference % (1000 * 60)) / 1000)
+        })
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [deadline])
+
+  if (timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+        <Clock className="w-3 h-3" />
+        <span className="font-semibold">Expired</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded">
+      <Clock className="w-3 h-3" />
+      <span className="font-mono font-semibold">
+        {timeLeft.days > 0 ? `${timeLeft.days}d ` : ''}
+        {timeLeft.hours.toString().padStart(2, '0')}:
+        {timeLeft.minutes.toString().padStart(2, '0')}:
+        {timeLeft.seconds.toString().padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
 export default function JobsPage() {
   const { student } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
@@ -48,74 +100,55 @@ export default function JobsPage() {
       router.push("/")
       return
     }
-    fetchJobs()
-    fetchStudentProfile()
+    // Fetch all data in parallel for faster loading
+    fetchAllData()
   }, [student, router])
-
-  useEffect(() => {
-    if (studentProfile) {
-      fetchApplicationData()
-    }
-  }, [studentProfile])
 
   useEffect(() => {
     filterJobs()
   }, [jobs, activeTab, studentProfile, applicationData])
 
-  const fetchJobs = async () => {
+  // Combined fetch function for better performance
+  const fetchAllData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/jobs')
-      if (response.ok) {
-        const result = await response.json()
+      
+      // Prepare student profile immediately
+      const profileData = { ...student } as StudentDetails
+      if (profileData.college_reg_no) {
+        profileData.college_reg_no = profileData.college_reg_no.toUpperCase()
+      }
+      setStudentProfile(profileData)
+
+      // Fetch jobs and applications in parallel
+      const [jobsResponse, applicationsResponse] = await Promise.allSettled([
+        fetch('/api/admin/jobs'),
+        fetch(`/api/student/applications?student_id=${profileData.college_reg_no}`)
+      ])
+
+      // Process jobs
+      if (jobsResponse.status === 'fulfilled' && jobsResponse.value.ok) {
+        const result = await jobsResponse.value.json()
         const jobsData = result.data || []
-        // Update expired jobs before setting state
         const updatedJobs = updateExpiredJobs(jobsData)
         setJobs(updatedJobs)
       } else {
         setError('Failed to fetch jobs')
       }
+
+      // Process applications
+      let applicationsData = []
+      if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
+        const result = await applicationsResponse.value.json()
+        applicationsData = Array.isArray(result) ? result : result.data || []
+      }
+      setApplicationData(applicationsData)
+
     } catch (error) {
-      console.error('Error fetching jobs:', error)
-      setError('Failed to load jobs')
+      console.error('Error fetching data:', error)
+      setError('Failed to load data')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchStudentProfile = async () => {
-    if (!student) return
-    
-    try {
-      // Use authenticated student data
-      const profileData = { ...student }
-      // Ensure case consistency for matching applications
-      if (profileData.college_reg_no) {
-        profileData.college_reg_no = profileData.college_reg_no.toUpperCase()
-      }
-      setStudentProfile(profileData)
-    } catch (error) {
-      console.error('Error loading student profile:', error)
-      toast.error("Failed to load student profile")
-    }
-  }
-
-  const fetchApplicationData = async () => {
-    if (!studentProfile?.college_reg_no) return
-    
-    try {
-      const response = await fetch(`/api/student/applications?student_id=${studentProfile.college_reg_no}`)
-      let applicationsData = []
-      
-      if (response.ok) {
-        const result = await response.json()
-        applicationsData = result.data || []
-      }
-      
-      setApplicationData(applicationsData)
-    } catch (error) {
-      console.error('Error fetching application data:', error)
-      setApplicationData([])
     }
   }
 
@@ -335,6 +368,13 @@ export default function JobsPage() {
                             </Badge>
                           )}
                         </div>
+                        
+                        {/* Countdown Timer - show only for upcoming and active jobs */}
+                        {(job.status === "upcoming" || job.status === "active") && job.application_deadline && (
+                          <div className="flex justify-end mt-2">
+                            <CountdownTimer deadline={job.application_deadline} />
+                          </div>
+                        )}
                       </CardHeader>
 
                       <CardContent className="space-y-4">

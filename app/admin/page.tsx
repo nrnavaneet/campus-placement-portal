@@ -62,6 +62,7 @@ export default function AdminDashboard() {
   const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBranch, setFilterBranch] = useState("all")
+  const [filterVerification, setFilterVerification] = useState("all")
   const [filterJobStatus, setFilterJobStatus] = useState("all")
   const [selectedJobForExport, setSelectedJobForExport] = useState("all")
   const [selectedCompanyForReport, setSelectedCompanyForReport] = useState("")
@@ -1028,7 +1029,11 @@ ${reportData.companyWiseData
       student.college_reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.college_email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesBranch = filterBranch === "all" || student.branch === filterBranch
-    return matchesSearch && matchesBranch
+    const matchesVerification = filterVerification === "all" || 
+      (filterVerification === "pending" && student.verification_status === "pending") ||
+      (filterVerification === "verified" && student.verification_status === "verified") ||
+      (filterVerification === "incomplete" && (!student.college_email || !student.personal_email || !student.first_name || !student.phone_number))
+    return matchesSearch && matchesBranch && matchesVerification
   })
 
   const filteredJobs = jobs.filter((job) => {
@@ -1061,7 +1066,7 @@ ${reportData.companyWiseData
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
         <div className="text-center">Loading admin dashboard...</div>
       </div>
     )
@@ -1072,7 +1077,7 @@ ${reportData.companyWiseData
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
       {/* Admin Navbar */}
       <nav className="sticky top-0 z-40 w-full border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
         <div className="container mx-auto px-4">
@@ -1161,7 +1166,7 @@ ${reportData.companyWiseData
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Students</CardTitle>
               <Users className="h-4 w-4 text-blue-600" />
@@ -1172,7 +1177,7 @@ ${reportData.companyWiseData
             </CardContent>
           </Card>
 
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
               <Briefcase className="h-4 w-4 text-green-600" />
@@ -1183,7 +1188,7 @@ ${reportData.companyWiseData
             </CardContent>
           </Card>
 
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
               <FileText className="h-4 w-4 text-purple-600" />
@@ -1194,7 +1199,7 @@ ${reportData.companyWiseData
             </CardContent>
           </Card>
 
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Placed Students</CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
@@ -1205,7 +1210,7 @@ ${reportData.companyWiseData
             </CardContent>
           </Card>
 
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Average Package</CardTitle>
               <TrendingUp className="h-4 w-4 text-yellow-600" />
@@ -1216,7 +1221,7 @@ ${reportData.companyWiseData
             </CardContent>
           </Card>
 
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Grievances</CardTitle>
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -1241,7 +1246,7 @@ ${reportData.companyWiseData
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Activities */}
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Recent Activities</CardTitle>
                   <CardDescription>Latest system activities and updates</CardDescription>
@@ -1270,7 +1275,7 @@ ${reportData.companyWiseData
               </Card>
 
               {/* Quick Actions */}
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
                   <CardDescription>Common administrative tasks</CardDescription>
@@ -1505,30 +1510,32 @@ ${reportData.companyWiseData
                   </Button>
 
                   {/* Additional Quick Actions */}
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-gray-700 mb-3">Student Actions</p>
-                    <div className="space-y-2">
+                  <div className="pt-3 border-t">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Student Actions</p>
+                    <div className="space-y-1.5">
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={() => {
                           const pendingCount = students.filter(s => s.verification_status === 'pending').length
                           if (pendingCount > 0) {
                             setActiveTab('students')
                             setSearchTerm('')
-                            setFilterStatus('pending')
+                            setFilterVerification('pending')
                           } else {
                             toast.info('No pending verifications')
                           }
                         }}
                       >
-                        <CheckCircle className="w-4 h-4 mr-2" />
+                        <CheckCircle className="w-3 h-3 mr-2" />
                         Review Pending Verifications ({students.filter(s => s.verification_status === 'pending').length})
                       </Button>
                       
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={() => {
                           const incompleteCount = students.filter(s => 
                             !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
@@ -1536,12 +1543,13 @@ ${reportData.companyWiseData
                           if (incompleteCount > 0) {
                             setActiveTab('students')
                             setSearchTerm('')
+                            setFilterVerification('incomplete')
                           } else {
                             toast.info('All profiles are complete')
                           }
                         }}
                       >
-                        <UserX className="w-4 h-4 mr-2" />
+                        <UserX className="w-3 h-3 mr-2" />
                         Incomplete Profiles ({students.filter(s => 
                           !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
                         ).length})
@@ -1549,12 +1557,13 @@ ${reportData.companyWiseData
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-gray-700 mb-3">Job Actions</p>
-                    <div className="space-y-2">
+                  <div className="pt-3 border-t">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Job Actions</p>
+                    <div className="space-y-1.5">
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={() => {
                           const expiringSoon = jobs.filter(job => {
                             const deadline = new Date(job.application_deadline)
@@ -1568,7 +1577,7 @@ ${reportData.companyWiseData
                           }
                         }}
                       >
-                        <Clock className="w-4 h-4 mr-2" />
+                        <Clock className="w-3 h-3 mr-2" />
                         Jobs Expiring Soon ({jobs.filter(job => {
                           const deadline = new Date(job.application_deadline)
                           const today = new Date()
@@ -1579,7 +1588,8 @@ ${reportData.companyWiseData
                       
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={() => {
                           const activeJobs = jobs.filter(job => job.status === 'active').length
                           setActiveTab('jobs')
@@ -1589,18 +1599,19 @@ ${reportData.companyWiseData
                           }
                         }}
                       >
-                        <Briefcase className="w-4 h-4 mr-2" />
+                        <Briefcase className="w-3 h-3 mr-2" />
                         Active Jobs ({jobs.filter(job => job.status === 'active').length})
                       </Button>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-gray-700 mb-3">System Actions</p>
-                    <div className="space-y-2">
+                  <div className="pt-3 border-t">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">System Actions</p>
+                    <div className="space-y-1.5">
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={() => {
                           const unread = grievances.filter(g => g.status === 'submitted').length
                           if (unread > 0) {
@@ -1611,13 +1622,14 @@ ${reportData.companyWiseData
                           }
                         }}
                       >
-                        <MessageSquare className="w-4 h-4 mr-2" />
+                        <MessageSquare className="w-3 h-3 mr-2" />
                         Unread Grievances ({grievances.filter(g => g.status === 'submitted').length})
                       </Button>
                       
                       <Button
                         variant="outline"
-                        className="w-full justify-start"
+                        size="sm"
+                        className="w-full justify-start text-xs h-8"
                         onClick={async () => {
                           try {
                             await fetchData()
@@ -1665,7 +1677,7 @@ ${reportData.companyWiseData
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredJobs.map((job) => (
-                <Card key={job.id} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <Card key={job.id} className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
@@ -1798,10 +1810,21 @@ ${reportData.companyWiseData
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterVerification} onValueChange={setFilterVerification}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending Verification</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="incomplete">Incomplete Profile</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Students Table */}
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1908,7 +1931,7 @@ ${reportData.companyWiseData
               {filteredGrievances.map((grievance) => (
                 <Card
                   key={grievance.id}
-                  className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg"
+                  className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg"
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -2018,7 +2041,7 @@ ${reportData.companyWiseData
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Placement Statistics</CardTitle>
                   <CardDescription>Overall placement performance</CardDescription>
@@ -2056,7 +2079,7 @@ ${reportData.companyWiseData
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Branch-wise Distribution</CardTitle>
                   <CardDescription>Student distribution across branches</CardDescription>
@@ -2083,7 +2106,7 @@ ${reportData.companyWiseData
               </Card>
             </div>
 
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Company-wise Reports</CardTitle>
                 <CardDescription>Generate reports based on company applications and placements</CardDescription>
@@ -2120,7 +2143,7 @@ ${reportData.companyWiseData
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Export Options</CardTitle>
                 <CardDescription>Download various reports and data</CardDescription>
