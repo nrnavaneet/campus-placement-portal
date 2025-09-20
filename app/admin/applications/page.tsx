@@ -82,7 +82,8 @@ export default function AdminApplicationsPage() {
   })
   const [appUpdateData, setAppUpdateData] = useState({
     current_stage: "",
-    notes: ""
+    notes: "",
+    package_amount: ""
   })
 
   useEffect(() => {
@@ -205,7 +206,8 @@ export default function AdminApplicationsPage() {
         body: JSON.stringify({
           application_id: selectedApplication.id,
           current_stage: appUpdateData.current_stage,
-          notes: appUpdateData.notes
+          notes: appUpdateData.notes,
+          package_amount: appUpdateData.current_stage === 'placed' ? parseFloat(appUpdateData.package_amount) || null : null
         })
       })
 
@@ -214,7 +216,7 @@ export default function AdminApplicationsPage() {
         await fetchApplications(selectedJob)
         setIsAppModalOpen(false)
         setSelectedApplication(null)
-        setAppUpdateData({ current_stage: "", notes: "" })
+        setAppUpdateData({ current_stage: "", notes: "", package_amount: "" })
       } else {
         console.error('Failed to update application')
       }
@@ -229,30 +231,28 @@ export default function AdminApplicationsPage() {
     setSelectedApplication(application)
     setAppUpdateData({
       current_stage: application.status,
-      notes: ""
+      notes: "",
+      package_amount: ""
     })
     setIsAppModalOpen(true)
   }
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      'pending': 'bg-gray-100 text-gray-800',
-      'in_progress': 'bg-blue-100 text-blue-800',
-      'passed': 'bg-green-100 text-green-800',
-      'failed': 'bg-red-100 text-red-800',
-      'scheduled': 'bg-yellow-100 text-yellow-800',
-      'completed': 'bg-purple-100 text-purple-800',
-      'no_show': 'bg-orange-100 text-orange-800'
+      'under_review': 'bg-blue-100 text-blue-800',
+      'shortlisted': 'bg-yellow-100 text-yellow-800',
+      'placed': 'bg-green-100 text-green-800',
+      'rejected': 'bg-red-100 text-red-800'
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'passed': return <CheckCircle className="w-4 h-4" />
-      case 'failed': return <XCircle className="w-4 h-4" />
-      case 'scheduled': return <Calendar className="w-4 h-4" />
-      case 'in_progress': return <Clock className="w-4 h-4" />
+      case 'placed': return <CheckCircle className="w-4 h-4" />
+      case 'rejected': return <XCircle className="w-4 h-4" />
+      case 'shortlisted': return <Calendar className="w-4 h-4" />
+      case 'under_review': return <Clock className="w-4 h-4" />
       default: return <AlertCircle className="w-4 h-4" />
     }
   }
@@ -334,17 +334,10 @@ export default function AdminApplicationsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Applications</SelectItem>
-                    <SelectItem value="applied">Applied</SelectItem>
                     <SelectItem value="under_review">Under Review</SelectItem>
                     <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="interview">Interview</SelectItem>
-                    <SelectItem value="assessment">Assessment</SelectItem>
-                    <SelectItem value="final_review">Final Review</SelectItem>
-                    <SelectItem value="selected">Selected</SelectItem>
-                    <SelectItem value="offered">Offered</SelectItem>
                     <SelectItem value="placed">Placed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -571,20 +564,27 @@ export default function AdminApplicationsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="applied">Applied</SelectItem>
                     <SelectItem value="under_review">Under Review</SelectItem>
                     <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="interview">Interview</SelectItem>
-                    <SelectItem value="assessment">Assessment</SelectItem>
-                    <SelectItem value="final_review">Final Review</SelectItem>
-                    <SelectItem value="selected">Selected</SelectItem>
-                    <SelectItem value="offered">Offered</SelectItem>
                     <SelectItem value="placed">Placed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {appUpdateData.current_stage === 'placed' && (
+                <div>
+                  <Label htmlFor="package-amount">Package Amount (per annum)</Label>
+                  <Input
+                    id="package-amount"
+                    type="number"
+                    placeholder="Enter package amount in lakhs (e.g., 12)"
+                    value={appUpdateData.package_amount}
+                    onChange={(e) => setAppUpdateData({...appUpdateData, package_amount: e.target.value})}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter amount in lakhs per annum (e.g., 12 for 12 LPA)</p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="app-notes">Status Change Notes</Label>

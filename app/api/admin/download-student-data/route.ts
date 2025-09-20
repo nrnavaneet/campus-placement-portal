@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     // Create a zip file
     const zip = new JSZip()
 
-    // Create CSV data for student information
+    // Create CSV data for student information with only requested fields
     const csvHeaders = [
       'Registration Number',
       'Name', 
@@ -74,11 +74,7 @@ export async function GET(request: NextRequest) {
       'UG Percentage',
       'Active Backlogs',
       'Date of Birth',
-      'Gender',
-      'Company Applied',
-      'Job Title',
-      'Application Status',
-      'Package Range'
+      'Gender'
     ].join(',')
 
     const csvRows = applications.map(app => {
@@ -93,13 +89,7 @@ export async function GET(request: NextRequest) {
         student?.ug_percentage || 'N/A',
         student?.active_backlogs ? 'Yes' : 'No',
         student?.date_of_birth || 'N/A',
-        student?.gender || 'N/A',
-        app.jobs.company_name,
-        app.jobs.title,
-        app.current_stage,
-        app.jobs.package_min && app.jobs.package_max 
-          ? `₹${(app.jobs.package_min / 100000).toFixed(1)}L - ₹${(app.jobs.package_max / 100000).toFixed(1)}L`
-          : 'N/A'
+        student?.gender || 'N/A'
       ].map(field => `"${field}"`).join(',')
     })
 

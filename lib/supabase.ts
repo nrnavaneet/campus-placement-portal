@@ -312,52 +312,20 @@ const createMockSupabase = () => {
   return {
     auth: {
       signUp: async ({ email, password }: { email: string; password: string }) => {
-        const userData = {
-          id: generateUUID(),
-          email,
-          email_confirmed_at: new Date().toISOString(),
-        }
-        localStorage.setItem("demo_user", JSON.stringify(userData))
-        localStorage.setItem("demo_session", "active")
-        return {
-          data: { user: userData },
-          error: null,
-        }
+        // This is a demo/development function - use actual Supabase in production
+        return supabase.auth.signUp({ email, password })
       },
       signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
-        if (email === "22demo001@msruas.ac.in" && password === "password123") {
-          const userData = { id: generateUUID(), email, email_confirmed_at: new Date().toISOString() }
-          localStorage.setItem("demo_user", JSON.stringify(userData))
-          localStorage.setItem("demo_session", "active")
-          return {
-            data: { user: userData },
-            error: null,
-          }
-        }
-        return {
-          data: { user: null },
-          error: { message: "Invalid login credentials" },
-        }
+        // This is a demo/development function - use actual Supabase in production  
+        return supabase.auth.signInWithPassword({ email, password })
       },
       getUser: async () => {
-        const userData = localStorage.getItem("demo_user")
-        const session = localStorage.getItem("demo_session")
-        if (userData && session) {
-          return {
-            data: { user: JSON.parse(userData) },
-            error: null,
-          }
-        }
-        return {
-          data: { user: null },
-          error: null,
-        }
+        // This is a demo/development function - use actual Supabase in production
+        return supabase.auth.getUser()
       },
       signOut: async () => {
-        localStorage.removeItem("demo_user")
-        localStorage.removeItem("demo_session")
-        localStorage.removeItem("student_profile")
-        return { error: null }
+        // This is a demo/development function - use actual Supabase in production
+        return supabase.auth.signOut()
       },
     },
     from: (table: string) => ({

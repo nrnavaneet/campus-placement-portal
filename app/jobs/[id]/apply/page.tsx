@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Navbar } from "@/components/layout/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Job, StudentDetails } from "@/lib/supabase"
+import { toast } from "sonner"
 import {
   CheckCircle,
   AlertCircle,
@@ -24,7 +26,6 @@ import {
 
 export default function JobApplicationPage() {
   const [job, setJob] = useState<Job | null>(null)
-  const [student, setStudent] = useState<StudentDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isApplying, setIsApplying] = useState(false)
   const [hasApplied, setHasApplied] = useState(false)
@@ -37,10 +38,13 @@ export default function JobApplicationPage() {
   const router = useRouter()
   const params = useParams()
   const jobId = params.id as string
+  const { student, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
-    fetchData()
-  }, [jobId])
+    if (!authLoading) {
+      fetchData()
+    }
+  }, [jobId, authLoading])
 
   const fetchData = async () => {
     try {
@@ -61,45 +65,16 @@ export default function JobApplicationPage() {
       }
       setJob(jobData)
 
-      // Fetch student profile from localStorage first, then try API as fallback
-      try {
-        const storedProfile = localStorage.getItem("student_profile")
-        let studentData = null
-        
-        if (storedProfile) {
-          studentData = JSON.parse(storedProfile)
-          console.log('Using student data from localStorage:', studentData)
-        } else {
-          // Try API with a test email (only for demo)
-          const studentEmail = "22etcs002132@msruas.ac.in"
-          const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
-          
-          if (studentResponse.ok) {
-            const studentResult = await studentResponse.json()
-            studentData = studentResult.data
-            console.log('Using student data from API:', studentData)
-          }
-        }
-        
-        if (studentData) {
-          setStudent(studentData)
-          checkEligibility(jobData, studentData)
-          
-          // Check if already applied using API
-          checkExistingApplication(studentData.college_reg_no)
-        } else {
-          console.error('No student data available')
-          alert('Please complete your profile registration first')
-          router.push('/register')
-          return
-        }
-        
-      } catch (studentError) {
-        console.error('Error fetching student data:', studentError)
-        alert('Please complete your profile registration first')
-        router.push('/register')
+      // Check if student is authenticated
+      if (!student) {
+        toast.error('Please login to apply for jobs')
+        router.push('/')
         return
       }
+
+      // Check eligibility and existing application
+      checkEligibility(jobData, student)
+      checkExistingApplication(student.college_reg_no)
 
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -176,7 +151,9 @@ export default function JobApplicationPage() {
       if (response.ok) {
         // Application successful
         setHasApplied(true)
-        alert('Application submitted successfully!')
+        toast.success('Application submitted successfully!', {
+          description: 'Your application has been received. Check the applications page for updates.',
+        })
         
         // Show success message and redirect
         setTimeout(() => {
@@ -186,14 +163,20 @@ export default function JobApplicationPage() {
         const errorData = await response.json()
         console.error('Application failed:', errorData)
         if (errorData.error?.includes('already submitted')) {
-          alert('You have already applied for this position.')
+          toast.error('Already Applied', {
+            description: 'You have already applied for this position.',
+          })
         } else {
-          alert('Failed to submit application. Please try again.')
+          toast.error('Application Failed', {
+            description: errorData.error || 'Failed to submit application. Please try again.',
+          })
         }
       }
     } catch (error) {
       console.error('Error submitting application:', error)
-      alert('Failed to submit application. Please try again.')
+      toast.error('Application Failed', {
+        description: 'Network error. Please check your connection and try again.',
+      })
     } finally {
       setIsApplying(false)
     }
@@ -213,7 +196,7 @@ export default function JobApplicationPage() {
     setConfirmations((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navbar />

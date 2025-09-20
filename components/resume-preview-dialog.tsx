@@ -24,16 +24,16 @@ export function ResumePreviewDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 sm:p-6 overflow-hidden">
         <DialogHeader className="pb-4 px-6 pt-6 sm:px-0 sm:pt-0 border-b flex-shrink-0 relative">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold pr-4">
+          <div className="flex items-start justify-between gap-4">
+            <DialogTitle className="text-lg font-semibold flex-1 leading-tight">
               Resume Preview - {studentName} ({studentRegNo})
             </DialogTitle>
-            <div className="flex-shrink-0 -mr-4">
+            <div className="flex-shrink-0 ml-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onDownload}
-                className="gap-2"
+                className="gap-2 whitespace-nowrap"
               >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">Download</span>

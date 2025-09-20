@@ -243,8 +243,17 @@ export default function ApplicationsPage() {
   const getStageProgress = (stage: string) => {
     const stages = ["applied", "under_review", "shortlisted", "interview_scheduled", "selected"]
     const currentIndex = stages.indexOf(stage)
-    if (stage === "rejected") return 25 // Show minimal progress for rejected
-    return ((currentIndex + 1) / stages.length) * 100
+    
+    // Show 100% completion for final statuses
+    if (stage === "rejected" || stage === "placed" || stage === "selected") return 100
+    
+    // For ongoing stages, calculate progress
+    if (currentIndex >= 0) {
+      return ((currentIndex + 1) / stages.length) * 100
+    }
+    
+    // Default progress for unknown stages
+    return 25
   }
 
   const formatDate = (dateString: string) => {

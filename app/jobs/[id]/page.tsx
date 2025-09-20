@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { JobApplicationDialog } from "@/components/job-application-dialog"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 import type { Job, StudentDetails } from "@/lib/supabase"
 import {
   CheckCircle,
@@ -25,6 +27,7 @@ import {
 } from "lucide-react"
 
 export default function JobDetailsPage() {
+  const { student: authenticatedStudent } = useAuth()
   const [job, setJob] = useState<Job | null>(null)
   const [student, setStudent] = useState<StudentDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,39 +61,17 @@ export default function JobDetailsPage() {
       }
       setJob(jobData)
 
-      // Fetch student profile from API
-      try {
-        const studentEmail = "22etcs002132@msruas.ac.in" // Default for demo
-        const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
+      // Use authenticated student profile
+      if (authenticatedStudent) {
+        setStudent(authenticatedStudent)
+        checkEligibility(jobData, authenticatedStudent)
         
-        if (studentResponse.ok) {
-          const studentResult = await studentResponse.json()
-          const studentData = studentResult.data
-          setStudent(studentData)
-          checkEligibility(jobData, studentData)
-          
-          // Check if already applied using API
-          checkExistingApplication(studentData.college_reg_no)
-        } else {
-          // Fallback to localStorage if API fails
-          const storedProfile = localStorage.getItem("student_profile")
-          if (storedProfile) {
-            const studentData = JSON.parse(storedProfile)
-            setStudent(studentData)
-            checkEligibility(jobData, studentData)
-            checkExistingApplication(studentData.college_reg_no)
-          }
-        }
-      } catch (studentError) {
-        console.error("Error fetching student profile:", studentError)
-        // Fallback to localStorage
-        const storedProfile = localStorage.getItem("student_profile")
-        if (storedProfile) {
-          const studentData = JSON.parse(storedProfile)
-          setStudent(studentData)
-          checkEligibility(jobData, studentData)
-          checkExistingApplication(studentData.college_reg_no)
-        }
+        // Check if already applied using API
+        checkExistingApplication(authenticatedStudent.college_reg_no)
+      } else {
+        toast.error("Please log in to view job details")
+        router.push("/")
+        return
       }
 
     } catch (error) {
@@ -473,7 +454,7 @@ export default function JobDetailsPage() {
                 <div className="space-y-4">
                   {job.timeline.map((stage, index) => (
                     <div key={index} className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-medium text-blue-600">{index + 1}</span>
                       </div>
                       <div className="flex-1">

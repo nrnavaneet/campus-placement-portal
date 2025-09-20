@@ -24,12 +24,12 @@ import {
 import { useTheme } from "@/contexts/theme-context"
 import { supabaseClient, type StudentDetails, type Job, type GrievanceReport } from "@/lib/supabase"
 import { toast } from "sonner"
+import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from "@/components/ui/professional-toast"
 import {
   Users,
   Briefcase,
   TrendingUp,
   Plus,
-  Settings,
   LogOut,
   Moon,
   Sun,
@@ -38,6 +38,7 @@ import {
   AlertCircle,
   CheckCircle,
   Download,
+  RefreshCw,
   Edit,
   Trash2,
   Eye,
@@ -47,6 +48,8 @@ import {
   IndianRupee,
   MessageSquare,
   BarChart3,
+  Clock,
+  UserX,
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -54,6 +57,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [students, setStudents] = useState<StudentDetails[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
+  const [companies, setCompanies] = useState<string[]>([])
   const [grievances, setGrievances] = useState<GrievanceReport[]>([])
   const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -92,6 +96,7 @@ export default function AdminDashboard() {
   })
   const [isGrievanceDialogOpen, setIsGrievanceDialogOpen] = useState(false)
   const [selectedGrievance, setSelectedGrievance] = useState<GrievanceReport | null>(null)
+  const [grievanceFilter, setGrievanceFilter] = useState<"all" | "submitted" | "resolved">("all")
   const [adminResponse, setAdminResponse] = useState("")
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -101,6 +106,8 @@ export default function AdminDashboard() {
     placedStudents: 0,
     averagePackage: 0,
   })
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
   const [newJob, setNewJob] = useState({
     title: "",
     company_name: "",
@@ -162,110 +169,106 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      console.log('🔄 Fetching admin dashboard data...')
+      console.log('� Fetching admin dashboard data (parallel)...')
       
-      // Fetch students from database
-      let allStudents: StudentDetails[] = []
-      try {
-        const response = await fetch('/api/admin/students')
-        const result = await response.json()
-        
-        if (response.ok && result.data) {
-          allStudents = result.data
-          console.log('👥 Students fetched:', allStudents.length, allStudents)
-        } else {
-          console.error("Failed to fetch students:", result.error)
-        }
-      } catch (error) {
-        console.error("Error fetching students:", error)
-      }
+      // Make all API calls in parallel for faster loading
+      const [
+        studentsResponse,
+        jobsResponse,
+        companiesResponse,
+        grievancesResponse,
+        applicationsResponse,
+        activitiesResponse
+      ] = await Promise.allSettled([
+        fetch('/api/admin/students'),
+        fetch('/api/admin/jobs'),
+        fetch('/api/admin/company-report?get_companies=true'),
+        fetch('/api/grievance'),
+        fetch('/api/admin/applications'),
+        fetch('/api/admin/activities')
+      ])
 
+      // Process students
+      let allStudents: StudentDetails[] = []
+      if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
+        const result = await studentsResponse.value.json()
+        allStudents = result.data || []
+        console.log('👥 Students fetched:', allStudents.length)
+      } else {
+        console.error('Failed to fetch students')
+      }
       setStudents(allStudents)
 
-      // Fetch jobs from database only (no fake jobs)
+      // Process jobs
       let allJobs: Job[] = []
-      try {
-        const response = await fetch('/api/admin/jobs')
-        const result = await response.json()
-        
-        if (response.ok && result.data) {
-          allJobs = result.data
-          console.log('💼 Jobs fetched:', allJobs.length, 'Active jobs:', allJobs.filter(j => j.status === 'active').length)
-        } else {
-          console.error("Failed to fetch jobs:", result.error)
-        }
-      } catch (error) {
-        console.error("Error fetching jobs:", error)
+      if (jobsResponse.status === 'fulfilled' && jobsResponse.value.ok) {
+        const result = await jobsResponse.value.json()
+        allJobs = result.data || []
+        console.log('💼 Jobs fetched:', allJobs.length)
+      } else {
+        console.error('Failed to fetch jobs')
       }
-
       setJobs(allJobs)
 
-      // Fetch grievances from database
-      let allGrievances: GrievanceReport[] = []
-      try {
-        const response = await fetch('/api/admin/grievances')
-        const result = await response.json()
-        
-        if (response.ok && result.data) {
-          allGrievances = result.data
-          console.log('📝 Grievances fetched:', allGrievances.length, 'Pending:', allGrievances.filter(g => g.status === 'submitted').length)
-        } else {
-          console.error("Failed to fetch grievances:", result.error)
-        }
-      } catch (error) {
-        console.error("Error fetching grievances:", error)
+      // Process companies
+      let allCompanies: string[] = []
+      if (companiesResponse.status === 'fulfilled' && companiesResponse.value.ok) {
+        const result = await companiesResponse.value.json()
+        allCompanies = result.companies || []
+        console.log('🏢 Companies fetched:', allCompanies.length)
+      } else {
+        console.error('Failed to fetch companies')
       }
+      setCompanies(allCompanies)
 
+      // Process grievances
+      let allGrievances: GrievanceReport[] = []
+      if (grievancesResponse.status === 'fulfilled' && grievancesResponse.value.ok) {
+        const result = await grievancesResponse.value.json()
+        allGrievances = Array.isArray(result) ? result : result.data || []
+        console.log('📝 Grievances fetched:', allGrievances.length)
+      } else {
+        console.error('Failed to fetch grievances')
+      }
       setGrievances(allGrievances)
 
-      // Fetch applications from database
+      // Process applications
       let allApplications: any[] = []
-      try {
-        const response = await fetch('/api/admin/applications')
-        const result = await response.json()
-        
-        if (response.ok && result.data) {
-          allApplications = result.data
-          console.log('📋 Applications fetched:', allApplications.length)
-        } else {
-          console.error("Failed to fetch applications:", result.error)
-        }
-      } catch (error) {
-        console.error("Error fetching applications:", error)
+      if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
+        const result = await applicationsResponse.value.json()
+        allApplications = result.applications || []
+        console.log('📋 Applications fetched:', allApplications.length)
+      } else {
+        console.error('Failed to fetch applications')
       }
 
-      // Fetch recent activities from database
-      try {
-        const response = await fetch('/api/admin/activities')
-        if (response.ok) {
-          const result = await response.json()
-          setRecentActivities(result.data || [])
-          console.log('🔔 Activities fetched:', result.data?.length || 0)
-        } else {
-          console.error("Error fetching activities:", response.statusText)
-        }
-      } catch (error) {
-        console.error("Error fetching activities:", error)
+      // Process activities
+      if (activitiesResponse.status === 'fulfilled' && activitiesResponse.value.ok) {
+        const result = await activitiesResponse.value.json()
+        setRecentActivities(result.data || [])
+        console.log('🔔 Activities fetched:', result.data?.length || 0)
+      } else {
+        console.error('Failed to fetch activities')
       }
 
-      // Calculate stats using real database data
-      const placedCount = allStudents.filter((s: StudentDetails) => s.placement_status.accepted_offers > 0).length
+      // Calculate stats efficiently
+      const placedCount = allStudents.filter(s => s.placement_status?.accepted_offers > 0).length
       const totalPackages = allStudents
-        .filter((s: StudentDetails) => s.placement_status.max_ctc > 0)
-        .reduce((sum: number, s: StudentDetails) => sum + s.placement_status.max_ctc, 0)
+        .filter(s => s.placement_status?.max_ctc > 0)
+        .reduce((sum, s) => sum + (s.placement_status?.max_ctc || 0), 0)
       const avgPackage = placedCount > 0 ? totalPackages / placedCount / 100000 : 0
-      const pendingGrievances = allGrievances.filter((g: GrievanceReport) => g.status === "submitted").length
+      const pendingGrievances = allGrievances.filter(g => g.status === "submitted").length
 
       const calculatedStats = {
         totalStudents: allStudents.length,
-        activeJobs: allJobs.filter((j: Job) => j.status === "active").length,
+        activeJobs: allJobs.filter(j => j.status === "active").length,
         totalApplications: allApplications.length,
         pendingGrievances,
         placedStudents: placedCount,
         averagePackage: Math.round(avgPackage * 10) / 10,
       }
 
-      console.log('📊 Calculated stats:', calculatedStats)
+      console.log('📊 Stats calculated in parallel:', calculatedStats)
       setStats(calculatedStats)
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -482,7 +485,10 @@ export default function AdminDashboard() {
       setJobs(prevJobs => prevJobs.filter(job => job.id !== selectedJob.id))
       setIsDeleteJobOpen(false)
       setSelectedJob(null)
-      setSuccess("Job deleted successfully!")
+      toast.success("Job deleted successfully!", {
+        description: `${selectedJob.company_name} - ${selectedJob.title} has been removed`,
+        duration: 3000
+      })
       fetchData() // Refresh data including activities
     } catch (error: any) {
       setError(error.message || "Failed to delete job")
@@ -557,43 +563,86 @@ export default function AdminDashboard() {
       setJobs(prevJobs => prevJobs.map(job => job.id === selectedJob.id ? result.data : job))
       setIsEditJobOpen(false)
       setSelectedJob(null)
-      setSuccess("Job updated successfully!")
+      toast.success("Job updated successfully!", {
+        description: `${result.data.company_name} - ${result.data.title} has been updated`,
+        duration: 3000
+      })
     } catch (error: any) {
       setError(error.message || "Failed to update job")
     }
   }
 
+  const refreshGrievances = async () => {
+    try {
+      console.log('🔄 Fast refresh grievances only...')
+      const response = await fetch('/api/grievance')
+      if (response.ok) {
+        const result = await response.json()
+        const allGrievances = Array.isArray(result) ? result : result.data || []
+        setGrievances(allGrievances)
+        
+        // Update pending grievances count in stats
+        const pendingCount = allGrievances.filter(g => g.status === "submitted").length
+        setStats(prev => ({ ...prev, pendingGrievances: pendingCount }))
+        console.log('✅ Grievances refreshed quickly')
+      }
+    } catch (error) {
+      console.error('Error refreshing grievances:', error)
+    }
+  }
+
   const handleGrievanceResponse = async () => {
     if (!selectedGrievance || !adminResponse.trim()) {
-      alert("Please provide a response")
+      showErrorToast("Please provide a response")
       return
     }
 
     try {
-      const updatedGrievance = {
+      console.log('🔄 Updating grievance:', selectedGrievance.id)
+      
+      const response = await fetch('/api/grievance', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: selectedGrievance.id,
+          status: "resolved",
+          admin_response: adminResponse,
+        }),
+      })
+
+      const result = await response.json()
+      console.log('📝 API response:', result)
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update grievance')
+      }
+
+      // Update local state with the returned data
+      const updatedGrievance = result.data || {
         ...selectedGrievance,
         status: "resolved" as const,
         admin_response: adminResponse,
         updated_at: new Date().toISOString(),
       }
 
-      const updateResult = supabaseClient.from("grievance_reports").update(updatedGrievance).eq("id", selectedGrievance.id)
-      
-      await new Promise((resolve) => {
-        if ('then' in updateResult) {
-          updateResult.then(resolve)
-        } else {
-          resolve(updateResult)
-        }
-      })
-
       setGrievances(grievances.map((g) => (g.id === selectedGrievance.id ? updatedGrievance : g)))
       setIsGrievanceDialogOpen(false)
       setSelectedGrievance(null)
       setAdminResponse("")
-      fetchData()
+      
+      showSuccessToast("Grievance response sent successfully", {
+        description: "The student will be notified of your response"
+      })
+      
+      // Fast refresh only grievances data for better performance
+      await refreshGrievances()
     } catch (error) {
       console.error("Error updating grievance:", error)
+      showErrorToast("Failed to send response", {
+        description: error instanceof Error ? error.message : "Please try again or contact support"
+      })
     }
   }
 
@@ -644,16 +693,33 @@ export default function AdminDashboard() {
 
   const handleDownloadResume = async (student: StudentDetails) => {
     if (!student.resume_url) {
-      alert("Resume not available for this student")
+      toast.error("Resume not available for this student")
       return
     }
 
     try {
-      const fileName = `${student.first_name}_${student.college_reg_no}_resume.pdf`
-      await downloadResume(student.resume_url, fileName)
+      // Use the admin API endpoint for resume download
+      const response = await fetch(`/api/admin/resume/download?regNo=${encodeURIComponent(student.college_reg_no)}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download resume: ${response.status}`)
+      }
+
+      // Get the blob and create download link
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${student.first_name}_${student.college_reg_no}_resume.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success("Resume downloaded successfully")
     } catch (error) {
       console.error("Error downloading resume:", error)
-      alert("Failed to download resume")
+      toast.error("Failed to download resume")
     }
   }
 
@@ -692,7 +758,10 @@ export default function AdminDashboard() {
 
       setIsUpdateStatusOpen(false)
       setSelectedStudent(null)
-      setSuccess("Student status updated successfully!")
+      toast.success("Student status updated successfully!", {
+        description: "The student's placement status has been updated",
+        duration: 3000
+      })
       fetchData() // Refresh data
     } catch (error: any) {
       setError(error.message || "Failed to update student status")
@@ -708,25 +777,33 @@ export default function AdminDashboard() {
 
       const csvContent = [
         [
+          "Job ID",
           "Job Title",
           "Company",
-          "Package Min",
-          "Package Max",
-          "Min Percentage",
+          "Package Range (₹L)",
+          "Package Min (₹L)",
+          "Package Max (₹L)",
+          "Min UG Percentage",
           "Status",
-          "Deadline",
+          "Application Deadline",
           "Eligible Branches",
+          "No Backlogs Required",
+          "Created Date"
         ].join(","),
         ...jobsToExport.map((job) =>
           [
-            job.title,
-            job.company_name,
-            job.package_min,
-            job.package_max,
+            job.id,
+            `"${job.title}"`,
+            `"${job.company_name}"`,
+            `"₹${(job.package_min / 100000).toFixed(1)}L - ₹${(job.package_max / 100000).toFixed(1)}L"`,
+            (job.package_min / 100000).toFixed(1),
+            (job.package_max / 100000).toFixed(1),
             job.min_ug_percentage,
-            job.status,
-            job.application_deadline,
-            job.branches_allowed.join("; "),
+            job.status.toUpperCase(),
+            new Date(job.application_deadline).toLocaleDateString('en-IN'),
+            `"${job.branches_allowed.join(', ')}"`,
+            job.no_backlogs_required ? 'Yes' : 'No',
+            new Date(job.created_at || Date.now()).toLocaleDateString('en-IN')
           ].join(","),
         ),
       ].join("\n")
@@ -836,7 +913,8 @@ ${reportData.companyWiseData
         throw new Error('Failed to fetch company report')
       }
       const result = await response.json()
-      setCompanyReportData(result.data)
+      // Ensure we always have an array for companyReportData
+      setCompanyReportData(result.data || result || [])
       setIsCompanyReportOpen(true)
     } catch (error) {
       console.error('Error generating company report:', error)
@@ -958,13 +1036,28 @@ ${reportData.companyWiseData
     return matchesStatus
   })
 
-  const filteredGrievances = grievances.filter((grievance) => {
-    const matchesSearch =
-      grievance.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grievance.student_reg_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grievance.issue_type.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
-  })
+  const filteredGrievances = grievances
+    .filter((grievance) => {
+      const matchesSearch =
+        grievance.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        grievance.student_reg_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        grievance.issue_type.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesFilter = 
+        grievanceFilter === "all" || 
+        (grievanceFilter === "submitted" && grievance.status === "submitted") ||
+        (grievanceFilter === "resolved" && grievance.status === "resolved")
+      
+      return matchesSearch && matchesFilter
+    })
+    .sort((a, b) => {
+      // Sort submitted first, then resolved, then others
+      if (a.status === "submitted" && b.status !== "submitted") return -1
+      if (b.status === "submitted" && a.status !== "submitted") return 1
+      if (a.status === "resolved" && b.status !== "resolved" && b.status !== "submitted") return -1
+      if (b.status === "resolved" && a.status !== "resolved" && a.status !== "submitted") return 1
+      return 0
+    })
 
   if (isLoading) {
     return (
@@ -986,7 +1079,7 @@ ${reportData.companyWiseData
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link href="/admin" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
                   <Shield className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
@@ -1007,10 +1100,6 @@ ${reportData.companyWiseData
                 {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
               </Button>
 
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-
               <Button variant="ghost" size="icon" onClick={handleSignOut}>
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -1020,11 +1109,22 @@ ${reportData.companyWiseData
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-            Admin Dashboard
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage placement activities and student applications</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">Manage placement activities and student applications</p>
+          </div>
+          <Button 
+            onClick={() => fetchData()} 
+            variant="outline" 
+            className="ml-4 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </Button>
         </div>
 
         {error && (
@@ -1375,10 +1475,10 @@ ${reportData.companyWiseData
                     Export Student Data
                   </Button>
 
-                  <div className="space-y-2">
+                  <div className="flex gap-2 items-start">
                     <Select value={selectedJobForExport} onValueChange={setSelectedJobForExport}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select job for export" />
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="All Jobs" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Jobs</SelectItem>
@@ -1389,7 +1489,7 @@ ${reportData.companyWiseData
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={exportJobData}>
+                    <Button variant="outline" className="flex-shrink-0" onClick={exportJobData}>
                       <FileText className="w-4 h-4 mr-2" />
                       Export Job Data
                     </Button>
@@ -1403,6 +1503,135 @@ ${reportData.companyWiseData
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Generate Placement Report
                   </Button>
+
+                  {/* Additional Quick Actions */}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Student Actions</p>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          const pendingCount = students.filter(s => s.verification_status === 'pending').length
+                          if (pendingCount > 0) {
+                            setActiveTab('students')
+                            setSearchTerm('')
+                            setFilterStatus('pending')
+                          } else {
+                            toast.info('No pending verifications')
+                          }
+                        }}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Review Pending Verifications ({students.filter(s => s.verification_status === 'pending').length})
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          const incompleteCount = students.filter(s => 
+                            !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
+                          ).length
+                          if (incompleteCount > 0) {
+                            setActiveTab('students')
+                            setSearchTerm('')
+                          } else {
+                            toast.info('All profiles are complete')
+                          }
+                        }}
+                      >
+                        <UserX className="w-4 h-4 mr-2" />
+                        Incomplete Profiles ({students.filter(s => 
+                          !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
+                        ).length})
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Job Actions</p>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          const expiringSoon = jobs.filter(job => {
+                            const deadline = new Date(job.application_deadline)
+                            const today = new Date()
+                            const daysUntilDeadline = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                            return daysUntilDeadline <= 7 && daysUntilDeadline > 0
+                          }).length
+                          setActiveTab('jobs')
+                          if (expiringSoon === 0) {
+                            toast.info('No jobs expiring soon')
+                          }
+                        }}
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Jobs Expiring Soon ({jobs.filter(job => {
+                          const deadline = new Date(job.application_deadline)
+                          const today = new Date()
+                          const daysUntilDeadline = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                          return daysUntilDeadline <= 7 && daysUntilDeadline > 0
+                        }).length})
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          const activeJobs = jobs.filter(job => job.status === 'active').length
+                          setActiveTab('jobs')
+                          setFilterJobStatus('active')
+                          if (activeJobs === 0) {
+                            toast.info('No active jobs')
+                          }
+                        }}
+                      >
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Active Jobs ({jobs.filter(job => job.status === 'active').length})
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-medium text-gray-700 mb-3">System Actions</p>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          const unread = grievances.filter(g => g.status === 'submitted').length
+                          if (unread > 0) {
+                            setActiveTab('grievances')
+                            setGrievanceFilter('submitted')
+                          } else {
+                            toast.info('No unread grievances')
+                          }
+                        }}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Unread Grievances ({grievances.filter(g => g.status === 'submitted').length})
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={async () => {
+                          try {
+                            await fetchData()
+                            toast.success('Data refreshed successfully')
+                          } catch (error) {
+                            toast.error('Failed to refresh data')
+                          }
+                        }}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh All Data
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1462,17 +1691,34 @@ ${reportData.companyWiseData
                     <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{job.description}</p>
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <IndianRupee className="w-4 h-4 text-green-600" />
-                        <span>{(job.package_max / 100000).toFixed(1)}L</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="w-4 h-4 text-green-600" />
+                          <span className="text-gray-600">Package:</span>
+                        </div>
+                        <span className="font-semibold text-green-600">
+                          ₹{(job.package_min / 100000).toFixed(1)}L - ₹{(job.package_max / 100000).toFixed(1)}L
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-blue-600" />
-                        <span>{job.min_ug_percentage}% minimum</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-blue-600" />
+                          <span className="text-gray-600">Min. Grade:</span>
+                        </div>
+                        <span className="font-semibold text-blue-600">{job.min_ug_percentage}%</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-orange-600" />
-                        <span>{new Date(job.application_deadline).toLocaleDateString()}</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-orange-600" />
+                          <span className="text-gray-600">Deadline:</span>
+                        </div>
+                        <span className="font-semibold text-orange-600">
+                          {new Date(job.application_deadline).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
                       </div>
                     </div>
 
@@ -1634,15 +1880,27 @@ ${reportData.companyWiseData
               <Badge variant="destructive">{stats.pendingGrievances} Pending</Badge>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search grievances..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            {/* Search and Filter */}
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search grievances..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={grievanceFilter} onValueChange={(value: "all" | "submitted" | "resolved") => setGrievanceFilter(value)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grievances</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Grievances List */}
@@ -1839,7 +2097,7 @@ ${reportData.companyWiseData
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Companies</SelectItem>
-                        {Array.from(new Set(jobs.map(job => job.company_name))).map((company) => (
+                        {companies.map((company) => (
                           <SelectItem key={company} value={company}>
                             {company}
                           </SelectItem>
@@ -2254,12 +2512,22 @@ ${reportData.companyWiseData
 
               <div className="space-y-2">
                 <Label htmlFor="company">Company (Optional)</Label>
-                <Input
-                  id="company"
+                <Select
                   value={updateStatusForm.company}
-                  onChange={(e) => setUpdateStatusForm({ ...updateStatusForm, company: e.target.value })}
-                  placeholder="Company name"
-                />
+                  onValueChange={(value) => setUpdateStatusForm({ ...updateStatusForm, company: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No Company</SelectItem>
+                    {companies.map((company) => (
+                      <SelectItem key={company} value={company}>
+                        {company}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -2311,26 +2579,8 @@ ${reportData.companyWiseData
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">
-                  Total Records: {companyReportData.length}
+                  Total Records: {companyReportData?.length || 0}
                 </span>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => exportCompanyReport(selectedCompanyForReport)}
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Student Data + Resumes
-                  </Button>
-                </div>
               </div>
 
               <div className="overflow-x-auto max-h-96">
@@ -2347,7 +2597,7 @@ ${reportData.companyWiseData
                     </tr>
                   </thead>
                   <tbody>
-                    {companyReportData.map((item, index) => (
+                    {(companyReportData || []).map((item, index) => (
                       <tr key={index} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-medium">{item.company_name}</td>
                         <td className="p-3">{item.job_title}</td>
@@ -2378,31 +2628,41 @@ ${reportData.companyWiseData
                 </table>
               </div>
 
-              {companyReportData.length === 0 && (
+              {(!companyReportData || companyReportData.length === 0) && (
                 <div className="text-center py-8 text-gray-500">
                   No data available for the selected company
                 </div>
               )}
 
               <div className="flex justify-between">
-                <Button 
-                  onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
-                  variant="default"
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={isDownloadingData}
-                >
-                  {isDownloadingData ? (
-                    <>
-                      <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      Preparing...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Student Data & Resumes
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
+                    variant="default"
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={isDownloadingData}
+                  >
+                    {isDownloadingData ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Preparing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Data & Resumes
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => exportCompanyReport(selectedCompanyForReport)}
+                    size="default"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
                 <Button variant="outline" onClick={() => setIsCompanyReportOpen(false)}>
                   Close
                 </Button>

@@ -3,7 +3,9 @@ import type { Metadata } from "next"
 import { Inter } from 'next/font/google'
 import "./globals.css"
 import { ThemeProvider } from "@/contexts/theme-context"
+import { AuthProvider } from "@/contexts/auth-context"
 import { ScrollToTop } from "@/components/ui/scroll-to-top"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,10 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider defaultTheme="light" storageKey="campus-portal-theme">
-          {children}
-          <ScrollToTop />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider defaultTheme="light" storageKey="campus-portal-theme">
+            {children}
+            <ScrollToTop />
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )

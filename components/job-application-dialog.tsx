@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ResumePreviewDialog } from './resume-preview-dialog'
+import { useAuth } from '@/contexts/auth-context'
+import { toast } from 'sonner'
 import type { Job, StudentDetails } from '@/lib/supabase'
 import {
   CheckCircle,
@@ -34,6 +36,7 @@ export function JobApplicationDialog({
   job,
   onApplicationSuccess
 }: JobApplicationDialogProps) {
+  const { student: authenticatedStudent } = useAuth()
   const [student, setStudent] = useState<StudentDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isApplying, setIsApplying] = useState(false)
@@ -54,37 +57,20 @@ export function JobApplicationDialog({
   }, [isOpen, job])
 
   const fetchStudentData = async () => {
+    if (!authenticatedStudent) {
+      toast.error("Please log in to view job details")
+      onClose()
+      return
+    }
+
     try {
       setIsLoading(true)
-      const studentEmail = "22etcs002132@msruas.ac.in" // Default for demo
-      const studentResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
-      
-      if (studentResponse.ok) {
-        const studentResult = await studentResponse.json()
-        const studentData = studentResult.data
-        setStudent(studentData)
-        checkEligibility(job!, studentData)
-        checkExistingApplication(studentData.college_reg_no)
-      } else {
-        // Fallback to localStorage if API fails
-        const storedProfile = localStorage.getItem("student_profile")
-        if (storedProfile) {
-          const studentData = JSON.parse(storedProfile)
-          setStudent(studentData)
-          checkEligibility(job!, studentData)
-          checkExistingApplication(studentData.college_reg_no)
-        }
-      }
+      setStudent(authenticatedStudent)
+      checkEligibility(job!, authenticatedStudent)
+      checkExistingApplication(authenticatedStudent.college_reg_no)
     } catch (error) {
-      console.error("Error fetching student profile:", error)
-      // Fallback to localStorage
-      const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        const studentData = JSON.parse(storedProfile)
-        setStudent(studentData)
-        checkEligibility(job!, studentData)
-        checkExistingApplication(studentData.college_reg_no)
-      }
+      console.error("Error loading student data:", error)
+      toast.error("Failed to load student profile")
     } finally {
       setIsLoading(false)
     }
@@ -163,14 +149,14 @@ export function JobApplicationDialog({
         const errorData = await response.json()
         console.error('Application failed:', errorData)
         if (errorData.error?.includes('already submitted')) {
-          alert('You have already applied for this position.')
+          toast.error('You have already applied for this position.')
         } else {
-          alert('Failed to submit application. Please try again.')
+          toast.error('Failed to submit application. Please try again.')
         }
       }
     } catch (error) {
       console.error('Error submitting application:', error)
-      alert('Failed to submit application. Please try again.')
+      toast.error('Failed to submit application. Please try again.')
     } finally {
       setIsApplying(false)
     }

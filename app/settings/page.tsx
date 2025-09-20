@@ -11,7 +11,9 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { useTheme } from "@/contexts/theme-context"
+import { useAuth } from "@/contexts/auth-context"
 import { supabaseClient } from "@/lib/supabase"
+import { toast } from "sonner"
 import {
   SettingsIcon,
   Bell,
@@ -27,6 +29,8 @@ import {
 } from "lucide-react"
 
 export default function SettingsPage() {
+  const { student, updatePassword } = useAuth()
+  
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -51,32 +55,43 @@ export default function SettingsPage() {
   }, [])
 
   const loadSettings = async () => {
+    if (!student) {
+      toast.error("Please log in to access settings")
+      router.push("/")
+      return
+    }
+
     try {
       setIsLoading(true)
-      // For demo, using hardcoded email - in production use auth context
-      const studentEmail = "22etcs002132@msruas.ac.in"
       
-      const response = await fetch(`/api/student/settings?email=${encodeURIComponent(studentEmail)}`)
+      const response = await fetch(`/api/student/settings?email=${encodeURIComponent(student.college_email || student.personal_email)}`)
       if (response.ok) {
         const result = await response.json()
         setSettings(result.data)
       } else {
         console.error('Failed to load settings')
+        toast.error("Failed to load settings")
       }
     } catch (error) {
       console.error('Error loading settings:', error)
+      toast.error("Error loading settings")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleSettingChange = async (key: string, value: boolean) => {
+    if (!student) {
+      toast.error("Please log in to change settings")
+      return
+    }
+
     const newSettings = { ...settings, [key]: value }
     setSettings(newSettings)
     
     try {
       // Save to API
-      const studentEmail = "22etcs002132@msruas.ac.in"
+      const studentEmail = student.college_email || student.personal_email
       
       const response = await fetch('/api/student/settings', {
         method: 'POST',
@@ -129,16 +144,24 @@ export default function SettingsPage() {
     setPasswordSuccess("")
 
     try {
-      // For demo purposes, just show success
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setPasswordSuccess("Password updated successfully!")
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
+      // Use the auth context to update password
+      const success = await updatePassword(passwordData.currentPassword, passwordData.newPassword)
+      
+      if (success) {
+        setPasswordSuccess("Password updated successfully!")
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+        toast.success("Password updated successfully!")
+      } else {
+        setPasswordError("Current password is incorrect or update failed")
+        toast.error("Failed to update password")
+      }
     } catch (error: any) {
       setPasswordError(error.message || "Failed to update password")
+      toast.error("Failed to update password")
     } finally {
       setIsLoading(false)
     }

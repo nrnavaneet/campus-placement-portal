@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { AlertCircle, CheckCircle, Send, Plus, ArrowLeft, Clock, MessageSquare } from "lucide-react"
 import { StudentDetails } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 interface Grievance {
   id: string
@@ -27,8 +29,10 @@ interface Grievance {
 }
 
 export default function GrievancePage() {
+  const { student } = useAuth()
+  const router = useRouter()
+  
   const [isLoading, setIsLoading] = useState(false)
-  const [student, setStudent] = useState<StudentDetails | null>(null)
   const [grievances, setGrievances] = useState<Grievance[]>([])
   const [showForm, setShowForm] = useState(false)
   const [loadingGrievances, setLoadingGrievances] = useState(true)
@@ -52,14 +56,14 @@ export default function GrievancePage() {
 
   const statusColors = {
     'submitted': 'bg-blue-500',
-    'in_review': 'bg-yellow-500',
+    'in_progress': 'bg-yellow-500',
     'resolved': 'bg-green-500',
     'closed': 'bg-gray-500'
   }
 
   const statusLabels = {
     'submitted': 'Submitted',
-    'in_review': 'In Review',
+    'in_progress': 'In Progress',
     'resolved': 'Resolved', 
     'closed': 'Closed'
   }
@@ -70,60 +74,44 @@ export default function GrievancePage() {
   }, [])
 
   const fetchStudentData = async () => {
+    if (!student) {
+      toast.error("Please log in to submit grievances")
+      router.push("/")
+      return
+    }
+
     try {
-      // Try localStorage first (demo mode)
-      const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        const studentData = JSON.parse(storedProfile)
-        setStudent(studentData)
-        setFormData(prev => ({
-          ...prev,
-          studentRegNo: studentData.college_reg_no || "",
-          studentName: studentData.first_name || "",
-          contactEmail: studentData.college_email || studentData.personal_email || "",
-        }))
-      } else {
-        // Try API fallback
-        const studentEmail = "22etcs002132@msruas.ac.in"
-        const response = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
-        
-        if (response.ok) {
-          const result = await response.json()
-          const studentData = result.data
-          setStudent(studentData)
-          setFormData(prev => ({
-            ...prev,
-            studentRegNo: studentData.college_reg_no || "",
-            studentName: studentData.first_name || "",
-            contactEmail: studentData.college_email || studentData.personal_email || "",
-          }))
-        }
-      }
+      setFormData(prev => ({
+        ...prev,
+        studentRegNo: student.college_reg_no || "",
+        studentName: student.first_name || "",
+        contactEmail: student.college_email || student.personal_email || "",
+      }))
     } catch (error) {
-      console.error("Error fetching student data:", error)
+      console.error("Error loading student data:", error)
+      toast.error("Failed to load student profile")
     }
   }
 
   const fetchGrievances = async () => {
+    if (!student) {
+      toast.error("Please log in to view grievances")
+      router.push("/")
+      return
+    }
+
     try {
       setLoadingGrievances(true)
-      // Get from localStorage first if available
-      const storedProfile = localStorage.getItem("student_profile")
-      let regNo = ""
-      
-      if (storedProfile) {
-        const studentData = JSON.parse(storedProfile)
-        regNo = studentData.college_reg_no
-      } else {
-        // Use default for demo
-        regNo = "22ETCS002132"
-      }
+      const regNo = student.college_reg_no
 
       if (regNo) {
         const response = await fetch(`/api/grievance?student_reg_no=${encodeURIComponent(regNo)}`)
         if (response.ok) {
           const data = await response.json()
           setGrievances(data)
+        } else {
+          console.error("Failed to fetch grievances")
+          toast.error("Failed to load grievances")
         }
       }
     } catch (error) {

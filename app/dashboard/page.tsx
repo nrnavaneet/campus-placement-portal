@@ -8,8 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Briefcase, Calendar, TrendingUp, Users, FileText, Clock, CheckCircle, AlertCircle, IndianRupee, MessageSquare } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 export default function DashboardPage() {
+  const { student } = useAuth()
+  const router = useRouter()
+  
   const [stats, setStats] = useState({
     totalApplications: 0,
     activeApplications: 0,
@@ -23,76 +28,73 @@ export default function DashboardPage() {
   const [studentProfile, setStudentProfile] = useState<any>(null)
 
   useEffect(() => {
+    if (!student) {
+      toast.error("Please log in to access the dashboard")
+      router.push("/")
+      return
+    }
     fetchStudentData()
-  }, [])
+  }, [student, router])
 
   const fetchStudentData = async () => {
+    if (!student) return
+
     try {
       setLoading(true)
+      setStudentProfile(student)
       
-      // For demo purposes, we'll use the actual student email from database
-      // In real implementation, you'd get this from auth/session
-      const studentEmail = "22etcs002132@msruas.ac.in"
+      // Calculate profile completion
+      let completionScore = 0
+      const totalFields = 10
       
-      // Fetch student profile
-      const profileResponse = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
-      if (profileResponse.ok) {
-        const profileResult = await profileResponse.json()
-        setStudentProfile(profileResult.data)
-        
-        // Calculate profile completion
-        const profile = profileResult.data
-        let completionScore = 0
-        const totalFields = 10
-        
-        if (profile.first_name) completionScore++
-        if (profile.college_email) completionScore++
-        if (profile.personal_email) completionScore++
-        if (profile.mobile_number) completionScore++
-        if (profile.branch) completionScore++
-        if (profile.college_reg_no) completionScore++
-        if (profile.date_of_birth) completionScore++
-        if (profile.ug_percentage) completionScore++
-        if (profile.resume_url) completionScore++
-        if (profile.placement_status) completionScore++
-        
-        const profileCompletion = Math.round((completionScore / totalFields) * 100)
-        
-        // Fetch applications
-        const appsResponse = await fetch(`/api/student/applications?student_id=${profile.college_reg_no}`)
-        let applicationsData = []
-        let applicationStats = {
-          totalApplications: 0,
-          activeApplications: 0,
-          interviews: 0,
-          offers: 0,
-          placed: 0
-        }
+      if (student.first_name) completionScore++
+      if (student.college_email) completionScore++
+      if (student.personal_email) completionScore++
+      if (student.mobile_number) completionScore++
+      if (student.branch) completionScore++
+      if (student.college_reg_no) completionScore++
+      if (student.date_of_birth) completionScore++
+      if (student.ug_percentage) completionScore++
+      if (student.resume_url) completionScore++
+      if (student.placement_status) completionScore++
+      
+      const profileCompletion = Math.round((completionScore / totalFields) * 100)
+      
+      // Fetch applications
+      const appsResponse = await fetch(`/api/student/applications?student_id=${student.college_reg_no}`)
+      let applicationsData = []
+      let applicationStats = {
+        totalApplications: 0,
+        activeApplications: 0,
+        interviews: 0,
+        offers: 0,
+        placed: 0
+      }
 
-        if (appsResponse.ok) {
-          const appsResult = await appsResponse.json()
-          applicationsData = appsResult.data || []
-          applicationStats = appsResult.stats
-          console.log('Dashboard API returned applications:', applicationsData?.length || 0)
-        } else {
-          console.log('Applications API failed for dashboard')
-        }
+      if (appsResponse.ok) {
+        const appsResult = await appsResponse.json()
+        applicationsData = appsResult.data || []
+        applicationStats = appsResult.stats
+        console.log('Dashboard API returned applications:', applicationsData?.length || 0)
+      } else {
+        console.log('Applications API failed for dashboard')
+      }
 
-        setRecentApplications(applicationsData)
-        setStats({
-          ...applicationStats,
-          profileCompletion
-        })
+      setRecentApplications(applicationsData)
+      setStats({
+        ...applicationStats,
+        profileCompletion
+      })
 
-        // Fetch student grievances
-        const grievanceResponse = await fetch(`/api/grievance?student_reg_no=${encodeURIComponent(profileResult.data.reg_no)}`)
-        if (grievanceResponse.ok) {
-          const grievanceData = await grievanceResponse.json()
-          setGrievances(grievanceData.slice(0, 3)) // Show only latest 3
-        }
+      // Fetch student grievances
+      const grievanceResponse = await fetch(`/api/grievance?student_reg_no=${encodeURIComponent(student.college_reg_no)}`)
+      if (grievanceResponse.ok) {
+        const grievanceData = await grievanceResponse.json()
+        setGrievances(grievanceData.slice(0, 3)) // Show only latest 3
       }
     } catch (error) {
       console.error("Error fetching student data:", error)
+      toast.error("Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
@@ -165,8 +167,6 @@ export default function DashboardPage() {
         return status
     }
   }
-
-  const router = useRouter()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabaseClient, type Job, type StudentDetails, downloadResume } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 import {
   Briefcase,
   Calendar,
@@ -27,6 +29,7 @@ import {
 } from "lucide-react"
 
 export default function JobsPage() {
+  const { student } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +43,14 @@ export default function JobsPage() {
   const [applicationData, setApplicationData] = useState<any[]>([])
 
   useEffect(() => {
+    if (!student) {
+      toast.error("Please log in to view jobs")
+      router.push("/")
+      return
+    }
     fetchJobs()
     fetchStudentProfile()
-  }, [])
+  }, [student, router])
 
   useEffect(() => {
     if (studentProfile) {
@@ -76,33 +84,19 @@ export default function JobsPage() {
   }
 
   const fetchStudentProfile = async () => {
+    if (!student) return
+    
     try {
-      // First try to get from localStorage like applications page
-      const storedProfile = localStorage.getItem("student_profile")
-      if (storedProfile) {
-        const profileData = JSON.parse(storedProfile)
-        // Ensure case consistency for matching applications
-        if (profileData.college_reg_no) {
-          profileData.college_reg_no = profileData.college_reg_no.toUpperCase()
-        }
-        setStudentProfile(profileData)
-        return
+      // Use authenticated student data
+      const profileData = { ...student }
+      // Ensure case consistency for matching applications
+      if (profileData.college_reg_no) {
+        profileData.college_reg_no = profileData.college_reg_no.toUpperCase()
       }
-      
-      // Fallback to API call if no stored profile
-      const studentEmail = "22etcs002132@msruas.ac.in"
-      
-      const response = await fetch(`/api/student/profile?email=${encodeURIComponent(studentEmail)}`)
-      if (response.ok) {
-        const result = await response.json()
-        // Make sure the college_reg_no is in the right case for matching applications
-        if (result.data && result.data.college_reg_no) {
-          result.data.college_reg_no = result.data.college_reg_no.toUpperCase()
-        }
-        setStudentProfile(result.data)
-      }
+      setStudentProfile(profileData)
     } catch (error) {
-      console.error('Error fetching student profile:', error)
+      console.error('Error loading student profile:', error)
+      toast.error("Failed to load student profile")
     }
   }
 

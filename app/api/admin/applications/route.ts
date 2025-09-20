@@ -55,10 +55,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST method to update application status
 export async function POST(request: NextRequest) {
   try {
-    const { application_id, current_stage, notes } = await request.json()
+    const { application_id, current_stage, notes, package_amount } = await request.json()
 
     if (!application_id || !current_stage) {
       return NextResponse.json(
@@ -67,19 +66,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Prepare update data
+    const updateData: any = {
+      current_stage,
+      updated_at: new Date().toISOString(),
+      // Add notes to stage history if provided
+      stage_history: notes ? {
+        stage: current_stage,
+        timestamp: new Date().toISOString(),
+        notes
+      } : undefined
+    }
+
+    // Add package amount if status is placed
+    if (current_stage === 'placed' && package_amount) {
+      updateData.package_amount = package_amount * 100000 // Convert lakhs to rupees
+    }
+
     // Update application status
     const { data, error } = await supabaseAdmin
       .from('application_status')
-      .update({
-        current_stage,
-        updated_at: new Date().toISOString(),
-        // Add notes to stage history if provided
-        stage_history: notes ? {
-          stage: current_stage,
-          timestamp: new Date().toISOString(),
-          notes
-        } : undefined
-      })
+      .update(updateData)
       .eq('id', application_id)
       .select(`
         *,

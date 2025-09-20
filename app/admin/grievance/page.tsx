@@ -376,32 +376,53 @@ export default function AdminGrievancePage() {
                               <div className="space-y-4">
                                 <div>
                                   <Label className="text-sm font-medium">Status Management</Label>
-                                  <div className="grid grid-cols-2 gap-3 mt-2">
+                                  <div className="flex gap-3 mt-2">
+                                    <div className="flex-1">
+                                      <Select 
+                                        value={selectedGrievance.status} 
+                                        onValueChange={(newStatus) => {
+                                          if (newStatus === 'resolved' && !adminResponse.trim() && !selectedGrievance.admin_response) {
+                                            toast.error("Please provide an admin response before marking as resolved")
+                                            return
+                                          }
+                                          updateGrievanceStatus(selectedGrievance.id, newStatus, adminResponse.trim() || undefined)
+                                        }}
+                                        disabled={updatingStatus}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="submitted">
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="w-4 h-4" />
+                                              Submitted
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="in_progress">
+                                            <div className="flex items-center gap-2">
+                                              <AlertCircle className="w-4 h-4" />
+                                              In Progress
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="resolved">
+                                            <div className="flex items-center gap-2">
+                                              <CheckCircle className="w-4 h-4" />
+                                              Resolved
+                                            </div>
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                     <Button
                                       size="sm"
-                                      variant={selectedGrievance.status === "in_progress" ? "default" : "outline"}
-                                      onClick={() => updateGrievanceStatus(selectedGrievance.id, "in_progress")}
+                                      variant="outline"
+                                      onClick={() => fetchGrievances()}
                                       disabled={updatingStatus}
                                       className="gap-2"
                                     >
-                                      <AlertCircle className="w-4 h-4" />
-                                      Mark In Progress
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={selectedGrievance.status === "resolved" ? "default" : "outline"}
-                                      onClick={() => {
-                                        if (adminResponse.trim()) {
-                                          updateGrievanceStatus(selectedGrievance.id, "resolved", adminResponse)
-                                        } else {
-                                          toast.error("Please provide an admin response before resolving")
-                                        }
-                                      }}
-                                      disabled={updatingStatus}
-                                      className="gap-2"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                      Mark Resolved
+                                      <RefreshCw className="w-4 h-4" />
+                                      Refresh
                                     </Button>
                                   </div>
                                 </div>
