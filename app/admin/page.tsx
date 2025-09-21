@@ -90,10 +90,15 @@ export default function AdminDashboard() {
     package_min: "",
     package_max: "",
     min_ug_percentage: "",
+    min_tenth_percentage: "",
+    min_twelfth_percentage: "",
+    courses_allowed: [] as string[],
+    year_of_graduation: "",
     branches_allowed: [] as string[],
     no_backlogs_required: true,
     application_deadline: "",
     status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
+    job_title: "",
   })
   const [isGrievanceDialogOpen, setIsGrievanceDialogOpen] = useState(false)
   const [selectedGrievance, setSelectedGrievance] = useState<GrievanceReport | null>(null)
@@ -116,10 +121,15 @@ export default function AdminDashboard() {
     package_min: "",
     package_max: "",
     min_ug_percentage: "",
+    min_tenth_percentage: "",
+    min_twelfth_percentage: "",
+    courses_allowed: [] as string[],
+    year_of_graduation: "",
     branches_allowed: [] as string[],
     no_backlogs_required: true,
     application_deadline: "",
     status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
+    job_title: "",
   })
   const { theme, setTheme } = useTheme()
   const router = useRouter()
@@ -368,9 +378,14 @@ export default function AdminDashboard() {
       branches_allowed: newJob.branches_allowed,
       no_backlogs_required: newJob.no_backlogs_required,
       counts_as_offer: true,
+      tpo: newJob.job_title?.trim() || null,
       eligibility_criteria: {
         experience: "0-2 years",
         backlogs_allowed: !newJob.no_backlogs_required,
+        min_tenth_percentage: newJob.min_tenth_percentage ? Number.parseFloat(newJob.min_tenth_percentage) : null,
+        min_twelfth_percentage: newJob.min_twelfth_percentage ? Number.parseFloat(newJob.min_twelfth_percentage) : null,
+        courses_allowed: newJob.courses_allowed.length > 0 ? newJob.courses_allowed : null,
+        year_of_graduation: newJob.year_of_graduation ? parseInt(newJob.year_of_graduation) : null,
       },
       timeline: [
         { stage: "Application", date: newJob.application_deadline || "", description: "Submit application with resume" },
@@ -420,10 +435,15 @@ export default function AdminDashboard() {
         package_min: "",
         package_max: "",
         min_ug_percentage: "",
+        min_tenth_percentage: "",
+        min_twelfth_percentage: "",
+        courses_allowed: [],
+        year_of_graduation: "",
         branches_allowed: [],
         no_backlogs_required: true,
         application_deadline: "",
         status: "upcoming",
+      job_title: "",
       })
 
       setError(null)
@@ -456,10 +476,15 @@ export default function AdminDashboard() {
       package_min: job.package_min?.toString() || "",
       package_max: job.package_max?.toString() || "",
       min_ug_percentage: job.min_ug_percentage?.toString() || "",
+      min_tenth_percentage: job.eligibility_criteria?.min_tenth_percentage?.toString() || "",
+      min_twelfth_percentage: job.eligibility_criteria?.min_twelfth_percentage?.toString() || "",
+      courses_allowed: job.eligibility_criteria?.courses_allowed || [],
+      year_of_graduation: job.eligibility_criteria?.year_of_graduation?.toString() || "",
       branches_allowed: job.branches_allowed || [],
       no_backlogs_required: job.no_backlogs_required || true,
       application_deadline: job.application_deadline ? new Date(job.application_deadline).toISOString().split('T')[0] : "",
       status: job.status,
+      job_title: job.tpo || "",
     })
     setIsEditJobOpen(true)
   }
@@ -1399,6 +1424,82 @@ ${reportData.companyWiseData
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
+                            <Label htmlFor="minTenthPercentage">Min 10th Percentage</Label>
+                            <Input
+                              id="minTenthPercentage"
+                              type="number"
+                              step="0.01"
+                              value={newJob.min_tenth_percentage}
+                              onChange={(e) => setNewJob({ ...newJob, min_tenth_percentage: e.target.value })}
+                              placeholder="60.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="minTwelfthPercentage">Min 12th Percentage</Label>
+                            <Input
+                              id="minTwelfthPercentage"
+                              type="number"
+                              step="0.01"
+                              value={newJob.min_twelfth_percentage}
+                              onChange={(e) => setNewJob({ ...newJob, min_twelfth_percentage: e.target.value })}
+                              placeholder="65.0"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Eligible Courses</Label>
+                            <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                              {["B.Tech", "B.Sc", "M.Tech", "M.Sc", "MBA", "MCA"].map((course) => (
+                                <label key={course} className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={newJob.courses_allowed.includes(course)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setNewJob({
+                                          ...newJob,
+                                          courses_allowed: [...newJob.courses_allowed, course],
+                                        })
+                                      } else {
+                                        setNewJob({
+                                          ...newJob,
+                                          courses_allowed: newJob.courses_allowed.filter((c) => c !== course),
+                                        })
+                                      }
+                                    }}
+                                  />
+                                  <span className="text-sm">{course}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="yearOfGraduation">Year of Graduation</Label>
+                            <Select
+                              value={newJob.year_of_graduation}
+                              onValueChange={(value) => setNewJob({ ...newJob, year_of_graduation: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select graduation year" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 5 }, (_, i) => {
+                                  const year = new Date().getFullYear() + i
+                                  return (
+                                    <SelectItem key={year} value={year.toString()}>
+                                      {year}
+                                    </SelectItem>
+                                  )
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
                             <Label htmlFor="status">Job Status</Label>
                             <Select
                               value={newJob.status}
@@ -1454,6 +1555,16 @@ ${reportData.companyWiseData
                               </label>
                             ))}
                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="tpoName">TPO Name</Label>
+                          <Input
+                            id="tpoName"
+                            value={newJob.job_title}
+                            onChange={(e) => setNewJob({ ...newJob, job_title: e.target.value })}
+                            placeholder="TPO name or contact person..."
+                          />
                         </div>
 
                         <div className="flex justify-end space-x-2">

@@ -595,6 +595,7 @@ export interface Job {
   timeline: any[]
   status: "upcoming" | "active" | "ongoing" | "closed"
   application_deadline: string
+  tpo?: string
   created_at: string
   updated_at: string
 }
