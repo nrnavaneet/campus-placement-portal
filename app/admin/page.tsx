@@ -97,6 +97,7 @@ export default function AdminDashboard() {
     year_of_graduation: "",
     branches_allowed: [] as string[],
     no_backlogs_required: true,
+    no_offer: false,
     application_deadline: "",
     status: "upcoming" as "upcoming" | "active" | "closed",
     job_title: "",
@@ -128,6 +129,7 @@ export default function AdminDashboard() {
     year_of_graduation: "",
     branches_allowed: [] as string[],
     no_backlogs_required: true,
+    no_offer: false,
     application_deadline: "",
     status: "upcoming" as "upcoming" | "active" | "closed",
     job_title: "",
@@ -381,11 +383,13 @@ export default function AdminDashboard() {
       eligible_courses: newJob.courses_allowed.length > 0 ? newJob.courses_allowed : null,
       branches_allowed: newJob.branches_allowed,
       no_backlogs_required: newJob.no_backlogs_required,
+      no_offer: newJob.no_offer,
       counts_as_offer: true,
       tpo: newJob.job_title?.trim() || null,
       eligibility_criteria: {
         experience: "0-2 years",
         backlogs_allowed: !newJob.no_backlogs_required,
+        no_offer_required: newJob.no_offer,
         year_of_graduation: newJob.year_of_graduation ? parseInt(newJob.year_of_graduation) : null,
       },
       timeline: [
@@ -442,6 +446,7 @@ export default function AdminDashboard() {
         year_of_graduation: "",
         branches_allowed: [],
         no_backlogs_required: true,
+        no_offer: false,
         application_deadline: "",
         status: "upcoming",
       job_title: "",
@@ -483,6 +488,7 @@ export default function AdminDashboard() {
       year_of_graduation: job.eligibility_criteria?.year_of_graduation?.toString() || "",
       branches_allowed: job.branches_allowed || [],
       no_backlogs_required: job.no_backlogs_required || true,
+      no_offer: job.no_offer || false,
       application_deadline: job.application_deadline ? new Date(job.application_deadline).toISOString().slice(0, 16) : "",
       status: job.status,
       job_title: job.tpo || "",
@@ -567,11 +573,13 @@ export default function AdminDashboard() {
       eligible_courses: editJob.courses_allowed.length > 0 ? editJob.courses_allowed : null,
       branches_allowed: editJob.branches_allowed,
       no_backlogs_required: editJob.no_backlogs_required,
+      no_offer: editJob.no_offer,
       tpo: editJob.job_title?.trim() || null,
       eligibility_criteria: {
         ...selectedJob.eligibility_criteria,
         experience: "0-2 years",
         backlogs_allowed: !editJob.no_backlogs_required,
+        no_offer_required: editJob.no_offer,
         year_of_graduation: editJob.year_of_graduation ? parseInt(editJob.year_of_graduation) : null,
       },
       application_deadline: editJob.application_deadline ? new Date(editJob.application_deadline).toISOString() : null,
@@ -873,6 +881,7 @@ export default function AdminDashboard() {
           "Application Deadline",
           "Eligible Branches",
           "No Backlogs Required",
+          "No Prior Offer Required",
           "TPO",
           "Counts As Offer",
           "Created Date",
@@ -895,6 +904,7 @@ export default function AdminDashboard() {
             new Date(job.application_deadline).toLocaleDateString('en-IN'),
             `"${job.branches_allowed.join(', ')}"`,
             job.no_backlogs_required ? 'Yes' : 'No',
+            job.no_offer ? 'Yes' : 'No',
             job.tpo || "",
             job.counts_as_offer ? 'Yes' : 'No',
             new Date(job.created_at || Date.now()).toLocaleDateString('en-IN'),
@@ -1565,6 +1575,24 @@ ${reportData.placedStudentDetails
                               </SelectContent>
                             </Select>
                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>No Offer ?</Label>
+                          <Select
+                            value={newJob.no_offer ? "yes" : "no"}
+                            onValueChange={(value) => 
+                              setNewJob({ ...newJob, no_offer: value === "yes" })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select offer criteria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">Yes</SelectItem>
+                              <SelectItem value="no">No</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -2467,6 +2495,11 @@ ${reportData.placedStudentDetails
                   <Label className="font-medium">Backlogs Policy</Label>
                   <p>{selectedJob.no_backlogs_required ? 'No backlogs allowed' : 'Backlogs allowed'}</p>
                 </div>
+                
+                <div>
+                  <Label className="font-medium">No Offer?</Label>
+                  <p>{selectedJob.no_offer ? 'Yes' : 'No'}</p>
+                </div>
               </div>
             )}
           </DialogContent>
@@ -2645,6 +2678,43 @@ ${reportData.placedStudentDetails
                   onChange={(e) => setEditJob({ ...editJob, job_title: e.target.value })}
                   placeholder="TPO name or contact person..."
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Backlogs Allowed?</Label>
+                  <Select
+                    value={editJob.no_backlogs_required ? "no" : "yes"}
+                    onValueChange={(value) => 
+                      setEditJob({ ...editJob, no_backlogs_required: value === "no" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select backlogs criteria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">No Backlogs Required</SelectItem>
+                      <SelectItem value="yes">Backlogs Allowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>No Offer ?</Label>
+                  <Select
+                    value={editJob.no_offer ? "yes" : "no"}
+                    onValueChange={(value) => 
+                      setEditJob({ ...editJob, no_offer: value === "yes" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select offer criteria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">

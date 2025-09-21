@@ -595,6 +595,7 @@ export interface Job {
   eligible_courses?: string[]
   no_backlogs_required: boolean
   counts_as_offer: boolean
+  no_offer?: boolean
   timeline: any[]
   status: "upcoming" | "active" | "closed"
   application_deadline: string

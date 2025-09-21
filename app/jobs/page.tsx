@@ -202,6 +202,10 @@ export default function JobsPage() {
       return false
     }
 
+    if (job.no_offer && student.placement_status?.offers && student.placement_status.offers.length > 0) {
+      return false
+    }
+
     if (job.branches_allowed && job.branches_allowed.length > 0) {
       if (!job.branches_allowed.includes(student.branch)) {
         return false
@@ -446,6 +450,9 @@ export default function JobsPage() {
                                 )}
                                 {job.no_backlogs_required && studentProfile.active_backlogs && (
                                   <div>• Active backlogs not allowed</div>
+                                )}
+                                {job.no_offer && studentProfile.placement_status?.offers && studentProfile.placement_status.offers.length > 0 && (
+                                  <div>• Prior offer not allowed (you have {studentProfile.placement_status.offers.length} offer{studentProfile.placement_status.offers.length > 1 ? 's' : ''})</div>
                                 )}
                                 {job.branches_allowed && job.branches_allowed.length > 0 && !job.branches_allowed.includes(studentProfile.branch) && (
                                   <div>• Branch not eligible: {studentProfile.branch}</div>

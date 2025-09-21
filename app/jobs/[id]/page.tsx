@@ -356,7 +356,7 @@ export default function JobDetailsPage() {
                 </div>
 
                 {/* Additional Eligibility Criteria */}
-                {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation) && (
+                {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation || job.no_backlogs_required || job.no_offer) && (
                   <div className="border-t pt-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Additional Eligibility Requirements</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -384,6 +384,24 @@ export default function JobDetailsPage() {
                           <div>
                             <p className="text-sm text-gray-500">Grad Year</p>
                             <p className="font-medium">{job.eligibility_criteria.year_of_graduation}</p>
+                          </div>
+                        </div>
+                      )}
+                      {job.no_backlogs_required && (
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-red-600" />
+                          <div>
+                            <p className="text-sm text-gray-500">Backlogs</p>
+                            <p className="font-medium text-red-600">Not Allowed</p>
+                          </div>
+                        </div>
+                      )}
+                      {job.no_offer && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-5 h-5 text-orange-600" />
+                          <div>
+                            <p className="text-sm text-gray-500">No Offer?</p>
+                            <p className="font-medium text-orange-600">Yes</p>
                           </div>
                         </div>
                       )}
