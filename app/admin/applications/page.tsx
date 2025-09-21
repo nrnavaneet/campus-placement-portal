@@ -511,7 +511,16 @@ export default function AdminApplicationsPage() {
 
               <div className="flex items-end gap-2">
                 <Button 
-                  onClick={() => selectedJob && fetchApplications(selectedJob)}
+                  onClick={() => {
+                    if (selectedJob) {
+                      fetchApplications(selectedJob)
+                      toast.info("Refreshing applications data...", {
+                        duration: 2000,
+                      })
+                    } else {
+                      toast.error("Please select a job first")
+                    }
+                  }}
                   disabled={isLoading}
                 >
                   Refresh

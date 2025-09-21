@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     const stats = {
       totalApplications: applications?.length || 0,
       activeApplications: applications?.filter((app: any) => ['applied', 'under_review'].includes(app.current_stage)).length || 0,
-      interviews: applications?.filter((app: any) => app.current_stage === 'interview').length || 0,
+      interviews: applications?.filter((app: any) => ['interview', 'interview_scheduled', 'shortlisted'].includes(app.current_stage)).length || 0,
       offers: applications?.filter((app: any) => app.current_stage === 'offered').length || 0,
       placed: applications?.filter(app => app.current_stage === 'placed').length || 0
     }

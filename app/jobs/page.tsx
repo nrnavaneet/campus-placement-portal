@@ -287,7 +287,9 @@ export default function JobsPage() {
     setSelectedJobForApplication(null)
     // Refresh the data to show the new application
     fetchAllData()
-    toast.success("Application submitted successfully!")
+    toast.success("Application submitted successfully!", {
+      duration: 3000, // Auto-fade after 3 seconds
+    })
   }
 
     // Download resume function

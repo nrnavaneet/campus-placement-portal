@@ -143,7 +143,9 @@ export default function GrievancePage() {
       if (response.ok) {
         const result = await response.json()
         console.log('✅ Success response:', result)
-        toast.success("Grievance submitted successfully! We'll get back to you soon.")
+        toast.success("Grievance submitted successfully! We'll get back to you soon.", {
+          duration: 4000, // Auto-fade after 4 seconds (longer message)
+        })
         setFormData(prev => ({
           ...prev,
           issueType: "",

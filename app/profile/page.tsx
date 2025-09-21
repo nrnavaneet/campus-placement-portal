@@ -137,6 +137,13 @@ export default function ProfilePage() {
         setError("File size must be less than 2MB")
         return
       }
+      
+      // Check if filename contains registration number
+      if (!file.name.toLowerCase().includes(student?.college_reg_no.toLowerCase() || '')) {
+        setError(`Resume filename should contain your registration number (${student?.college_reg_no}). Example: ${student?.college_reg_no}_Resume.pdf`)
+        return
+      }
+      
       setResumeFile(file)
       setError("")
     }
@@ -672,33 +679,46 @@ export default function ProfilePage() {
                   </div>
 
                   {isEditing && (
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      {resumeFile ? (
-                        <div className="space-y-2">
-                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-                          <p className="text-sm font-medium text-green-600">{resumeFile.name}</p>
-                          <p className="text-xs text-gray-500">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                          <div>
-                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                              <FileText className="w-4 h-4 mr-2" />
-                              {student.resume_url ? "Replace Resume" : "Upload Resume"}
-                            </Button>
+                    <>
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        {resumeFile ? (
+                          <div className="space-y-2">
+                            <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                            <p className="text-sm font-medium text-green-600">{resumeFile.name}</p>
+                            <p className="text-xs text-gray-500">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
                           </div>
-                          <p className="text-xs text-gray-500">PDF only, max 2MB</p>
-                        </div>
-                      )}
-                    </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Upload className="w-12 h-12 text-gray-400 mx-auto" />
+                            <div>
+                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                {student.resume_url ? "Replace Resume" : "Upload Resume"}
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">Max size: 2MB | PDF only</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Resume Guidelines - only show when editing */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mt-4">
+                        <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Resume Guidelines:</h4>
+                        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                          <li>• File must be in PDF format</li>
+                          <li>• Maximum file size: 2MB</li>
+                          <li>• Filename should contain your registration number ({student.college_reg_no})</li>
+                          <li>• Example: {student.college_reg_no}_Resume.pdf</li>
+                        </ul>
+                      </div>
+                    </>
                   )}
 
                   {student.resume_url && !isEditing && (

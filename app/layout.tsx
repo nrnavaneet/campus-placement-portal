@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/contexts/theme-context"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ScrollToTop } from "@/components/ui/scroll-to-top"
 import { Toaster } from "@/components/ui/sonner"
+import { ToastDismissOnRouteChange } from "@/components/toast-dismiss-on-route-change"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider defaultTheme="light" storageKey="campus-portal-theme">
+            <ToastDismissOnRouteChange />
             {children}
             <ScrollToTop />
             <Toaster />

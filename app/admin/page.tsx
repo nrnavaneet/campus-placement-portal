@@ -784,7 +784,9 @@ export default function AdminDashboard() {
 
   const handleDownloadResume = async (student: StudentDetails) => {
     if (!student.resume_url) {
-      toast.error("Resume not available for this student")
+      toast.error("Resume not available for this student", {
+        duration: 4000, // Auto-fade after 4 seconds
+      })
       return
     }
 
@@ -807,10 +809,14 @@ export default function AdminDashboard() {
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
       
-      toast.success("Resume downloaded successfully")
+      toast.success("Resume downloaded successfully", {
+        duration: 3000, // Auto-fade after 3 seconds
+      })
     } catch (error) {
       console.error("Error downloading resume:", error)
-      toast.error("Failed to download resume")
+      toast.error("Failed to download resume", {
+        duration: 4000, // Auto-fade after 4 seconds
+      })
     }
   }
 

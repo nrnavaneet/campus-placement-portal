@@ -150,7 +150,9 @@ export default function SettingsPage() {
           newPassword: "",
           confirmPassword: "",
         })
-        toast.success("Password updated successfully!")
+        toast.success("Password updated successfully!", {
+          duration: 3000, // Auto-fade after 3 seconds
+        })
       } else {
         setPasswordError("Current password is incorrect or update failed")
         toast.error("Failed to update password")

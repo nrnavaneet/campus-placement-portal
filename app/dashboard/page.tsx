@@ -226,7 +226,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">{stats.interviews}</div>
-              <p className="text-xs text-muted-foreground">Scheduled this week</p>
+              <p className="text-xs text-muted-foreground">Including shortlisted</p>
             </CardContent>
           </Card>
 
