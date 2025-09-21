@@ -55,7 +55,6 @@ export function RegistrationForm() {
   })
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeError, setResumeError] = useState("")
-  const [skipResume, setSkipResume] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const totalSteps = 4
@@ -115,7 +114,6 @@ export function RegistrationForm() {
       } else {
         setResumeError("")
         setResumeFile(file)
-        setSkipResume(false)
       }
     }
   }
@@ -193,7 +191,11 @@ export function RegistrationForm() {
         }
         break
       case 4:
-        // Resume is optional now
+        // Resume is now mandatory
+        if (!resumeFile) {
+          setError("Please upload your resume to continue")
+          return false
+        }
         return true
     }
     setError("")
@@ -558,14 +560,12 @@ export function RegistrationForm() {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Resume Upload (Optional)</Label>
+              <Label>Resume Upload *</Label>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                You can upload your resume now or add it later from your profile. However, you'll need to complete your
-                profile before applying for jobs.
+                Please upload your resume to complete the registration. This is required to apply for jobs.
               </p>
 
-              {!skipResume && (
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-6 text-center">
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-6 text-center">
                   <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileChange} className="hidden" />
                   {resumeFile ? (
                     <div className="space-y-3">
@@ -600,34 +600,10 @@ export function RegistrationForm() {
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500">Max size: 2MB | PDF only</p>
+                      <p className="text-xs text-red-500 font-medium">* Resume upload is required</p>
                     </div>
                   )}
                 </div>
-              )}
-
-              {!resumeFile && (
-                <div className="flex justify-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setSkipResume(!skipResume)}
-                    className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    {skipResume ? "Upload Resume Instead" : "Skip Resume Upload"}
-                  </Button>
-                </div>
-              )}
-
-              {skipResume && (
-                <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-                    You can add your resume later from your profile. Remember to complete your profile before applying
-                    for jobs.
-                  </AlertDescription>
-                </Alert>
-              )}
 
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                 <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Resume Guidelines:</h4>
@@ -636,10 +612,6 @@ export function RegistrationForm() {
                   <li>• Maximum file size: 2MB</li>
                   <li>• Filename should contain your registration number ({formData.collegeRegNo})</li>
                   <li>• Example: {formData.collegeRegNo}_Resume.pdf</li>
-                  <li>
-                    • Will be stored in: /placements/resumes/
-                    {formData.branch?.toLowerCase().replace(/\s+/g, "-") || "your-branch"}/
-                  </li>
                 </ul>
               </div>
 
