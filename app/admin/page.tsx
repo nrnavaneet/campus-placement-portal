@@ -50,6 +50,7 @@ import {
   BarChart3,
   Clock,
   UserX,
+  User,
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -375,6 +376,9 @@ export default function AdminDashboard() {
       package_min: newJob.package_min ? Number.parseFloat(newJob.package_min) : null,
       package_max: newJob.package_max ? Number.parseFloat(newJob.package_max) : null,
       min_ug_percentage: Number.parseFloat(newJob.min_ug_percentage),
+      min_tenth_percentage: newJob.min_tenth_percentage ? Number.parseFloat(newJob.min_tenth_percentage) : null,
+      min_twelfth_percentage: newJob.min_twelfth_percentage ? Number.parseFloat(newJob.min_twelfth_percentage) : null,
+      eligible_courses: newJob.courses_allowed.length > 0 ? newJob.courses_allowed : null,
       branches_allowed: newJob.branches_allowed,
       no_backlogs_required: newJob.no_backlogs_required,
       counts_as_offer: true,
@@ -382,9 +386,6 @@ export default function AdminDashboard() {
       eligibility_criteria: {
         experience: "0-2 years",
         backlogs_allowed: !newJob.no_backlogs_required,
-        min_tenth_percentage: newJob.min_tenth_percentage ? Number.parseFloat(newJob.min_tenth_percentage) : null,
-        min_twelfth_percentage: newJob.min_twelfth_percentage ? Number.parseFloat(newJob.min_twelfth_percentage) : null,
-        courses_allowed: newJob.courses_allowed.length > 0 ? newJob.courses_allowed : null,
         year_of_graduation: newJob.year_of_graduation ? parseInt(newJob.year_of_graduation) : null,
       },
       timeline: [
@@ -476,9 +477,9 @@ export default function AdminDashboard() {
       package_min: job.package_min?.toString() || "",
       package_max: job.package_max?.toString() || "",
       min_ug_percentage: job.min_ug_percentage?.toString() || "",
-      min_tenth_percentage: job.eligibility_criteria?.min_tenth_percentage?.toString() || "",
-      min_twelfth_percentage: job.eligibility_criteria?.min_twelfth_percentage?.toString() || "",
-      courses_allowed: job.eligibility_criteria?.courses_allowed || [],
+      min_tenth_percentage: job.min_tenth_percentage?.toString() || "",
+      min_twelfth_percentage: job.min_twelfth_percentage?.toString() || "",
+      courses_allowed: job.eligible_courses || [],
       year_of_graduation: job.eligibility_criteria?.year_of_graduation?.toString() || "",
       branches_allowed: job.branches_allowed || [],
       no_backlogs_required: job.no_backlogs_required || true,
@@ -561,8 +562,18 @@ export default function AdminDashboard() {
       package_min: editJob.package_min ? Number.parseFloat(editJob.package_min) : null,
       package_max: editJob.package_max ? Number.parseFloat(editJob.package_max) : null,
       min_ug_percentage: Number.parseFloat(editJob.min_ug_percentage),
+      min_tenth_percentage: editJob.min_tenth_percentage ? Number.parseFloat(editJob.min_tenth_percentage) : null,
+      min_twelfth_percentage: editJob.min_twelfth_percentage ? Number.parseFloat(editJob.min_twelfth_percentage) : null,
+      eligible_courses: editJob.courses_allowed.length > 0 ? editJob.courses_allowed : null,
       branches_allowed: editJob.branches_allowed,
       no_backlogs_required: editJob.no_backlogs_required,
+      tpo: editJob.job_title?.trim() || null,
+      eligibility_criteria: {
+        ...selectedJob.eligibility_criteria,
+        experience: "0-2 years",
+        backlogs_allowed: !editJob.no_backlogs_required,
+        year_of_graduation: editJob.year_of_graduation ? parseInt(editJob.year_of_graduation) : null,
+      },
       application_deadline: editJob.application_deadline ? new Date(editJob.application_deadline).toISOString() : null,
       status: editJob.status,
       updated_at: new Date().toISOString(),
@@ -1717,6 +1728,42 @@ ${reportData.companyWiseData
                         </div>
                         <span className="font-semibold text-blue-600">{job.min_ug_percentage}%</span>
                       </div>
+                      {job.min_tenth_percentage && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-purple-600" />
+                            <span className="text-gray-600">Min 10th%:</span>
+                          </div>
+                          <span className="font-semibold text-purple-600">{job.min_tenth_percentage}%</span>
+                        </div>
+                      )}
+                      {job.min_twelfth_percentage && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-indigo-600" />
+                            <span className="text-gray-600">Min 12th%:</span>
+                          </div>
+                          <span className="font-semibold text-indigo-600">{job.min_twelfth_percentage}%</span>
+                        </div>
+                      )}
+                      {job.eligibility_criteria?.year_of_graduation && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-teal-600" />
+                            <span className="text-gray-600">Grad Year:</span>
+                          </div>
+                          <span className="font-semibold text-teal-600">{job.eligibility_criteria.year_of_graduation}</span>
+                        </div>
+                      )}
+                      {job.tpo && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-600" />
+                            <span className="text-gray-600">TPO:</span>
+                          </div>
+                          <span className="font-semibold text-gray-600">{job.tpo}</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-orange-600" />
@@ -1747,6 +1794,24 @@ ${reportData.companyWiseData
                         )}
                       </div>
                     </div>
+
+                    {job.eligible_courses && job.eligible_courses.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Eligible Courses:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {job.eligible_courses.slice(0, 2).map((course: string) => (
+                            <Badge key={course} variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                              {course}
+                            </Badge>
+                          ))}
+                          {job.eligible_courses.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{job.eligible_courses.length - 2} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex justify-between items-center pt-4 border-t">
                       <Button variant="outline" size="sm" onClick={() => handleViewJob(job)}>
@@ -2232,6 +2297,50 @@ ${reportData.companyWiseData
                     ))}
                   </div>
                 </div>
+
+                {/* Additional Eligibility Criteria */}
+                {(selectedJob.min_tenth_percentage || selectedJob.min_twelfth_percentage || (selectedJob.eligible_courses && selectedJob.eligible_courses.length > 0) || selectedJob.eligibility_criteria?.year_of_graduation) && (
+                  <div className="border-t pt-4">
+                    <Label className="font-medium text-lg">Additional Eligibility Requirements</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {selectedJob.min_tenth_percentage && (
+                        <div>
+                          <Label className="font-medium">Minimum 10th Percentage</Label>
+                          <p>{selectedJob.min_tenth_percentage}%</p>
+                        </div>
+                      )}
+                      {selectedJob.min_twelfth_percentage && (
+                        <div>
+                          <Label className="font-medium">Minimum 12th Percentage</Label>
+                          <p>{selectedJob.min_twelfth_percentage}%</p>
+                        </div>
+                      )}
+                      {selectedJob.eligibility_criteria?.year_of_graduation && (
+                        <div>
+                          <Label className="font-medium">Graduation Year</Label>
+                          <p>{selectedJob.eligibility_criteria.year_of_graduation}</p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedJob.eligible_courses && selectedJob.eligible_courses.length > 0 && (
+                      <div className="mt-4">
+                        <Label className="font-medium">Eligible Courses</Label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {selectedJob.eligible_courses.map((course: string) => (
+                            <Badge key={course} variant="outline" className="bg-blue-50 text-blue-700">{course}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedJob.tpo && (
+                  <div>
+                    <Label className="font-medium">TPO Contact</Label>
+                    <p>{selectedJob.tpo}</p>
+                  </div>
+                )}
                 
                 <div>
                   <Label className="font-medium">Backlogs Policy</Label>
@@ -2314,6 +2423,89 @@ ${reportData.companyWiseData
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="edit-tenth-percentage">Min 10th Percentage</Label>
+                  <Input
+                    id="edit-tenth-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editJob.min_tenth_percentage}
+                    onChange={(e) => setEditJob({ ...editJob, min_tenth_percentage: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-twelfth-percentage">Min 12th Percentage</Label>
+                  <Input
+                    id="edit-twelfth-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editJob.min_twelfth_percentage}
+                    onChange={(e) => setEditJob({ ...editJob, min_twelfth_percentage: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-graduation-year">Year of Graduation</Label>
+                  <Input
+                    id="edit-graduation-year"
+                    type="number"
+                    min="2020"
+                    max="2030"
+                    value={editJob.year_of_graduation}
+                    onChange={(e) => setEditJob({ ...editJob, year_of_graduation: e.target.value })}
+                    placeholder="e.g., 2024"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-courses">Eligible Courses</Label>
+                  <Select
+                    value={editJob.courses_allowed.length > 0 ? editJob.courses_allowed[0] : ""}
+                    onValueChange={(value) => {
+                      const currentCourses = [...editJob.courses_allowed]
+                      if (value && !currentCourses.includes(value)) {
+                        setEditJob({ ...editJob, courses_allowed: [...currentCourses, value] })
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Add courses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="B.Tech">B.Tech</SelectItem>
+                      <SelectItem value="B.E">B.E</SelectItem>
+                      <SelectItem value="BCA">BCA</SelectItem>
+                      <SelectItem value="MCA">MCA</SelectItem>
+                      <SelectItem value="M.Tech">M.Tech</SelectItem>
+                      <SelectItem value="MBA">MBA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {editJob.courses_allowed.map((course) => (
+                      <Badge 
+                        key={course} 
+                        variant="outline" 
+                        className="cursor-pointer hover:bg-red-50"
+                        onClick={() => {
+                          setEditJob({
+                            ...editJob,
+                            courses_allowed: editJob.courses_allowed.filter(c => c !== course)
+                          })
+                        }}
+                      >
+                        {course} ×
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="edit-deadline">Application Deadline</Label>
                   <Input
                     id="edit-deadline"
@@ -2322,6 +2514,16 @@ ${reportData.companyWiseData
                     onChange={(e) => setEditJob({ ...editJob, application_deadline: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-tpo-name">TPO Name</Label>
+                <Input
+                  id="edit-tpo-name"
+                  value={editJob.job_title}
+                  onChange={(e) => setEditJob({ ...editJob, job_title: e.target.value })}
+                  placeholder="TPO name or contact person..."
+                />
               </div>
 
               <div className="space-y-2">

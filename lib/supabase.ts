@@ -590,6 +590,9 @@ export interface Job {
   eligibility_criteria: any
   branches_allowed: string[]
   min_ug_percentage: number
+  min_tenth_percentage?: number
+  min_twelfth_percentage?: number
+  eligible_courses?: string[]
   no_backlogs_required: boolean
   counts_as_offer: boolean
   timeline: any[]

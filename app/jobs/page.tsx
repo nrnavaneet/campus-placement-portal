@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { JobApplicationDialog } from "@/components/job-application-dialog"
 import { supabaseClient, type Job, type StudentDetails, downloadResume } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
@@ -89,6 +90,8 @@ export default function JobsPage() {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
+  const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false)
+  const [selectedJobForApplication, setSelectedJobForApplication] = useState<Job | null>(null)
 
   const router = useRouter()
 
@@ -205,6 +208,26 @@ export default function JobsPage() {
       }
     }
 
+    // Check additional eligibility criteria
+    if (job.min_tenth_percentage && student.tenth_percentage && student.tenth_percentage < job.min_tenth_percentage) {
+      return false
+    }
+
+    if (job.min_twelfth_percentage && student.twelfth_percentage && student.twelfth_percentage < job.min_twelfth_percentage) {
+      return false
+    }
+
+    if (job.eligible_courses && job.eligible_courses.length > 0 && student.course) {
+      if (!job.eligible_courses.includes(student.course)) {
+        return false
+      }
+    }
+
+    // Check graduation year from eligibility_criteria (still in JSONB)
+    if (job.eligibility_criteria?.year_of_graduation && student.year_of_graduation !== job.eligibility_criteria.year_of_graduation) {
+      return false
+    }
+
     return true
   }
 
@@ -219,6 +242,19 @@ export default function JobsPage() {
       }
       return job
     })
+  }
+
+  const handleApplyNow = (job: Job) => {
+    setSelectedJobForApplication(job)
+    setIsApplicationDialogOpen(true)
+  }
+
+  const handleApplicationSuccess = () => {
+    setIsApplicationDialogOpen(false)
+    setSelectedJobForApplication(null)
+    // Refresh the data to show the new application
+    fetchAllData()
+    toast.success("Application submitted successfully!")
   }
 
     // Download resume function
@@ -396,6 +432,18 @@ export default function JobsPage() {
                                 {job.min_ug_percentage && studentProfile.ug_percentage < job.min_ug_percentage && (
                                   <div>• UG percentage: Need {job.min_ug_percentage}%, have {studentProfile.ug_percentage}%</div>
                                 )}
+                                {job.min_tenth_percentage && studentProfile.tenth_percentage && studentProfile.tenth_percentage < job.min_tenth_percentage && (
+                                  <div>• 10th percentage: Need {job.min_tenth_percentage}%, have {studentProfile.tenth_percentage}%</div>
+                                )}
+                                {job.min_twelfth_percentage && studentProfile.twelfth_percentage && studentProfile.twelfth_percentage < job.min_twelfth_percentage && (
+                                  <div>• 12th percentage: Need {job.min_twelfth_percentage}%, have {studentProfile.twelfth_percentage}%</div>
+                                )}
+                                {job.eligible_courses && job.eligible_courses.length > 0 && studentProfile.course && !job.eligible_courses.includes(studentProfile.course) && (
+                                  <div>• Course not eligible: {studentProfile.course}</div>
+                                )}
+                                {job.eligibility_criteria?.year_of_graduation && studentProfile.year_of_graduation !== job.eligibility_criteria.year_of_graduation && (
+                                  <div>• Graduation year: Need {job.eligibility_criteria.year_of_graduation}, have {studentProfile.year_of_graduation}</div>
+                                )}
                                 {job.no_backlogs_required && studentProfile.active_backlogs && (
                                   <div>• Active backlogs not allowed</div>
                                 )}
@@ -460,10 +508,10 @@ export default function JobsPage() {
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between">
+                        <div className="grid grid-cols-2 gap-4">
                           <div className="flex items-center space-x-1 text-sm text-green-600">
                             <IndianRupee className="w-4 h-4" />
-                            <span>{(job.package_max / 100000).toFixed(1)}L</span>
+                            <span>{(job.package_min / 100000).toFixed(1)}L - {(job.package_max / 100000).toFixed(1)}L</span>
                           </div>
                           <div className="flex items-center space-x-1 text-sm text-gray-500">
                             <Calendar className="w-4 h-4" />
@@ -474,7 +522,42 @@ export default function JobsPage() {
                               }
                             </span>
                           </div>
+                          <div className="flex items-center space-x-1 text-sm text-blue-600">
+                            <GraduationCap className="w-4 h-4" />
+                            <span>Min UG: {job.min_ug_percentage}%</span>
+                          </div>
+                          {job.min_tenth_percentage && (
+                            <div className="flex items-center space-x-1 text-sm text-purple-600">
+                              <GraduationCap className="w-4 h-4" />
+                              <span>Min 10th: {job.min_tenth_percentage}%</span>
+                            </div>
+                          )}
+                          {job.min_twelfth_percentage && (
+                            <div className="flex items-center space-x-1 text-sm text-indigo-600">
+                              <GraduationCap className="w-4 h-4" />
+                              <span>Min 12th: {job.min_twelfth_percentage}%</span>
+                            </div>
+                          )}
+                          {job.eligibility_criteria?.year_of_graduation && (
+                            <div className="flex items-center space-x-1 text-sm text-teal-600">
+                              <Calendar className="w-4 h-4" />
+                              <span>Grad Year: {job.eligibility_criteria.year_of_graduation}</span>
+                            </div>
+                          )}
                         </div>
+
+                        {job.eligible_courses && job.eligible_courses.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Eligible Courses:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {job.eligible_courses.map((course: string) => (
+                                <Badge key={course} variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                  {course}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Eligible Branches:</p>
@@ -497,11 +580,20 @@ export default function JobsPage() {
                             <Button 
                               variant="outline"
                               size="sm" 
-                              onClick={() => router.push(`/jobs/${job.id}/apply`)}
+                              onClick={() => router.push(`/jobs/${job.id}`)}
                               className="w-full transition-all duration-200 hover:scale-105"
                             >
                               <FileText className="w-4 h-4 mr-1" />
                               Track Application
+                            </Button>
+                          ) : activeTab === "available" && studentProfile && isEligibleForJob(job, studentProfile) && !applicationData.find(app => app.job_id === job.id) ? (
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleApplyNow(job)}
+                              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 hover:scale-105"
+                            >
+                              <Briefcase className="w-4 h-4 mr-1" />
+                              Apply Now
                             </Button>
                           ) : (
                             <Button 
@@ -541,6 +633,15 @@ export default function JobsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {selectedJobForApplication && (
+        <JobApplicationDialog
+          job={selectedJobForApplication}
+          isOpen={isApplicationDialogOpen}
+          onClose={() => setIsApplicationDialogOpen(false)}
+          onApplicationSuccess={handleApplicationSuccess}
+        />
+      )}
     </div>
   )
 }

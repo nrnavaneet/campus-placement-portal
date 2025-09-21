@@ -115,6 +115,31 @@ export default function JobDetailsPage() {
       )
     }
 
+    // Check additional eligibility criteria
+    if (jobData.min_tenth_percentage && studentData.tenth_percentage && studentData.tenth_percentage < jobData.min_tenth_percentage) {
+      eligible = false
+      reasons.push(
+        `10th percentage requirement not met (Required: ${jobData.min_tenth_percentage}%, You have: ${studentData.tenth_percentage}%)`,
+      )
+    }
+
+    if (jobData.min_twelfth_percentage && studentData.twelfth_percentage && studentData.twelfth_percentage < jobData.min_twelfth_percentage) {
+      eligible = false
+      reasons.push(
+        `12th percentage requirement not met (Required: ${jobData.min_twelfth_percentage}%, You have: ${studentData.twelfth_percentage}%)`,
+      )
+    }
+
+    if (jobData.eligible_courses && jobData.eligible_courses.length > 0 && studentData.course && !jobData.eligible_courses.includes(studentData.course)) {
+      eligible = false
+      reasons.push(`Your course (${studentData.course}) is not eligible`)
+    }
+
+    if (jobData.eligibility_criteria?.year_of_graduation && studentData.year_of_graduation !== jobData.eligibility_criteria.year_of_graduation) {
+      eligible = false
+      reasons.push(`Graduation year requirement not met (Required: ${jobData.eligibility_criteria.year_of_graduation}, You have: ${studentData.year_of_graduation})`)
+    }
+
     if (jobData.no_backlogs_required && studentData.active_backlogs) {
       eligible = false
       reasons.push("Active backlogs not allowed")
@@ -299,7 +324,7 @@ export default function JobDetailsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="flex items-center gap-2">
                     <IndianRupee className="w-5 h-5 text-green-600" />
                     <div>
@@ -310,7 +335,7 @@ export default function JobDetailsPage() {
                   <div className="flex items-center gap-2">
                     <GraduationCap className="w-5 h-5 text-blue-600" />
                     <div>
-                      <p className="text-sm text-gray-500">Min Percentage</p>
+                      <p className="text-sm text-gray-500">Min UG %</p>
                       <p className="font-medium">{job.min_ug_percentage}%</p>
                     </div>
                   </div>
@@ -331,6 +356,54 @@ export default function JobDetailsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Additional Eligibility Criteria */}
+                {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation) && (
+                  <div className="border-t pt-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Additional Eligibility Requirements</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {job.min_tenth_percentage && (
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-5 h-5 text-indigo-600" />
+                          <div>
+                            <p className="text-sm text-gray-500">Min 10th %</p>
+                            <p className="font-medium">{job.min_tenth_percentage}%</p>
+                          </div>
+                        </div>
+                      )}
+                      {job.min_twelfth_percentage && (
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-5 h-5 text-purple-600" />
+                          <div>
+                            <p className="text-sm text-gray-500">Min 12th %</p>
+                            <p className="font-medium">{job.min_twelfth_percentage}%</p>
+                          </div>
+                        </div>
+                      )}
+                      {job.eligibility_criteria?.year_of_graduation && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-teal-600" />
+                          <div>
+                            <p className="text-sm text-gray-500">Grad Year</p>
+                            <p className="font-medium">{job.eligibility_criteria.year_of_graduation}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {job.eligible_courses && job.eligible_courses.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Courses:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {job.eligible_courses.map((course: string) => (
+                            <Badge key={course} variant="outline" className="bg-blue-50 text-blue-700">
+                              {course}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -395,7 +468,7 @@ export default function JobDetailsPage() {
                     </div>
                     <Button 
                       size="lg"
-                      onClick={() => router.push(`/jobs/${jobId}/apply`)}
+                      onClick={() => setIsApplicationDialogOpen(true)}
                       className="px-8"
                     >
                       Apply Now
