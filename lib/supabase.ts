@@ -569,6 +569,12 @@ export interface StudentDetails {
     max_ctc: number
     max_offers_allowed: number
   }
+  tenth_percentage?: number
+  twelfth_percentage?: number
+  course?: string
+  current_location?: string
+  year_of_graduation?: number
+  verification_status?: "pending_verification" | "email_verified" | "verified"
   created_at: string
   updated_at: string
 }

@@ -258,7 +258,7 @@ export default function AdminDashboard() {
         .filter(s => s.placement_status?.max_ctc > 0)
         .reduce((sum, s) => sum + (s.placement_status?.max_ctc || 0), 0)
       const avgPackage = placedCount > 0 ? totalPackages / placedCount / 100000 : 0
-      const pendingGrievances = allGrievances.filter(g => g.status === "submitted").length
+      const pendingGrievances = allGrievances.filter((g: GrievanceReport) => g.status === "submitted").length
 
       const calculatedStats = {
         totalStudents: allStudents.length,
@@ -583,7 +583,7 @@ export default function AdminDashboard() {
         setGrievances(allGrievances)
         
         // Update pending grievances count in stats
-        const pendingCount = allGrievances.filter(g => g.status === "submitted").length
+        const pendingCount = allGrievances.filter((g: GrievanceReport) => g.status === "submitted").length
         setStats(prev => ({ ...prev, pendingGrievances: pendingCount }))
         console.log('✅ Grievances refreshed quickly')
       }
@@ -866,7 +866,7 @@ OVERALL STATISTICS
 Total Students: ${reportData.totalStudents}
 Placed Students: ${reportData.placedStudents}
 Placement Rate: ${reportData.placementRate}%
-Average Package: ₹${reportData.averagePackage}L
+Average Package: ₹${reportData.averagePackage.toFixed(1)}L
 
 BRANCH-WISE PLACEMENT DATA
 ==========================
@@ -1030,9 +1030,9 @@ ${reportData.companyWiseData
       student.college_email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesBranch = filterBranch === "all" || student.branch === filterBranch
     const matchesVerification = filterVerification === "all" || 
-      (filterVerification === "pending" && student.verification_status === "pending") ||
-      (filterVerification === "verified" && student.verification_status === "verified") ||
-      (filterVerification === "incomplete" && (!student.college_email || !student.personal_email || !student.first_name || !student.phone_number))
+      (filterVerification === "pending" && (!student.resume_url)) ||
+      (filterVerification === "verified" && (student.resume_url && student.college_email && student.personal_email)) ||
+      (filterVerification === "incomplete" && (!student.college_email || !student.personal_email || !student.first_name || !student.mobile_number))
     return matchesSearch && matchesBranch && matchesVerification
   })
 
@@ -1216,7 +1216,7 @@ ${reportData.companyWiseData
               <TrendingUp className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">₹{stats.averagePackage}L</div>
+              <div className="text-2xl font-bold text-yellow-600">₹{stats.averagePackage.toFixed(1)}L</div>
               <p className="text-xs text-muted-foreground">Per annum</p>
             </CardContent>
           </Card>
@@ -1511,121 +1511,8 @@ ${reportData.companyWiseData
 
                   {/* Additional Quick Actions */}
                   <div className="pt-3 border-t">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Student Actions</p>
-                    <div className="space-y-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-xs h-8"
-                        onClick={() => {
-                          const pendingCount = students.filter(s => s.verification_status === 'pending').length
-                          if (pendingCount > 0) {
-                            setActiveTab('students')
-                            setSearchTerm('')
-                            setFilterVerification('pending')
-                          } else {
-                            toast.info('No pending verifications')
-                          }
-                        }}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-2" />
-                        Review Pending Verifications ({students.filter(s => s.verification_status === 'pending').length})
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-xs h-8"
-                        onClick={() => {
-                          const incompleteCount = students.filter(s => 
-                            !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
-                          ).length
-                          if (incompleteCount > 0) {
-                            setActiveTab('students')
-                            setSearchTerm('')
-                            setFilterVerification('incomplete')
-                          } else {
-                            toast.info('All profiles are complete')
-                          }
-                        }}
-                      >
-                        <UserX className="w-3 h-3 mr-2" />
-                        Incomplete Profiles ({students.filter(s => 
-                          !s.college_email || !s.personal_email || !s.first_name || !s.phone_number
-                        ).length})
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Job Actions</p>
-                    <div className="space-y-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-xs h-8"
-                        onClick={() => {
-                          const expiringSoon = jobs.filter(job => {
-                            const deadline = new Date(job.application_deadline)
-                            const today = new Date()
-                            const daysUntilDeadline = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                            return daysUntilDeadline <= 7 && daysUntilDeadline > 0
-                          }).length
-                          setActiveTab('jobs')
-                          if (expiringSoon === 0) {
-                            toast.info('No jobs expiring soon')
-                          }
-                        }}
-                      >
-                        <Clock className="w-3 h-3 mr-2" />
-                        Jobs Expiring Soon ({jobs.filter(job => {
-                          const deadline = new Date(job.application_deadline)
-                          const today = new Date()
-                          const daysUntilDeadline = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                          return daysUntilDeadline <= 7 && daysUntilDeadline > 0
-                        }).length})
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-xs h-8"
-                        onClick={() => {
-                          const activeJobs = jobs.filter(job => job.status === 'active').length
-                          setActiveTab('jobs')
-                          setFilterJobStatus('active')
-                          if (activeJobs === 0) {
-                            toast.info('No active jobs')
-                          }
-                        }}
-                      >
-                        <Briefcase className="w-3 h-3 mr-2" />
-                        Active Jobs ({jobs.filter(job => job.status === 'active').length})
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">System Actions</p>
                     <div className="space-y-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-xs h-8"
-                        onClick={() => {
-                          const unread = grievances.filter(g => g.status === 'submitted').length
-                          if (unread > 0) {
-                            setActiveTab('grievances')
-                            setGrievanceFilter('submitted')
-                          } else {
-                            toast.info('No unread grievances')
-                          }
-                        }}
-                      >
-                        <MessageSquare className="w-3 h-3 mr-2" />
-                        Unread Grievances ({grievances.filter(g => g.status === 'submitted').length})
-                      </Button>
-                      
                       <Button
                         variant="outline"
                         size="sm"
@@ -1640,7 +1527,7 @@ ${reportData.companyWiseData
                         }}
                       >
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Refresh All Data
+                        Refresh Data
                       </Button>
                     </div>
                   </div>

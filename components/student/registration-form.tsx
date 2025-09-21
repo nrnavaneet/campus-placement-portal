@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { supabaseClient, generateUUID, uploadResume } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
 import { Upload, FileText, CheckCircle, AlertCircle, X, Trash2 } from "lucide-react"
 
 const branches = [
@@ -32,6 +33,8 @@ export function RegistrationForm() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const { checkAuth } = useAuth()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: "",
     gender: "",
@@ -44,12 +47,16 @@ export function RegistrationForm() {
     branch: "",
     ugPercentage: "",
     activeBacklogs: "",
+    tenthPercentage: "",
+    twelfthPercentage: "",
+    course: "",
+    currentLocation: "",
+    yearOfGraduation: "",
   })
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeError, setResumeError] = useState("")
   const [skipResume, setSkipResume] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
 
   const totalSteps = 4
   const progress = (currentStep / totalSteps) * 100
@@ -162,12 +169,26 @@ export function RegistrationForm() {
         }
         break
       case 3:
-        if (!formData.branch || !formData.ugPercentage || !formData.activeBacklogs) {
+        if (!formData.branch || !formData.course || !formData.tenthPercentage || !formData.twelfthPercentage || !formData.ugPercentage || !formData.yearOfGraduation || !formData.currentLocation || !formData.activeBacklogs) {
           setError("Please fill in all required fields")
+          return false
+        }
+        if (Number.parseFloat(formData.tenthPercentage) < 0 || Number.parseFloat(formData.tenthPercentage) > 100) {
+          setError("10th Percentage must be between 0 and 100")
+          return false
+        }
+        if (Number.parseFloat(formData.twelfthPercentage) < 0 || Number.parseFloat(formData.twelfthPercentage) > 100) {
+          setError("12th Percentage must be between 0 and 100")
           return false
         }
         if (Number.parseFloat(formData.ugPercentage) < 0 || Number.parseFloat(formData.ugPercentage) > 100) {
           setError("UG Percentage must be between 0 and 100")
+          return false
+        }
+        const currentYear = new Date().getFullYear()
+        const gradYear = parseInt(formData.yearOfGraduation)
+        if (gradYear < currentYear || gradYear > currentYear + 5) {
+          setError("Please select a valid graduation year")
           return false
         }
         break
@@ -206,19 +227,24 @@ export function RegistrationForm() {
       const studentData = {
         id: generateUUID(),
         user_id: userId,
-        name: formData.firstName, // Changed from first_name to name for API consistency
+        first_name: formData.firstName, // Match database schema column name
         gender: formData.gender as "Male" | "Female" | "Other",
         college_reg_no: formData.collegeRegNo.toUpperCase(),
         pwd: formData.pwd === "yes",
         date_of_birth: formData.dateOfBirth,
         college_email: formData.collegeEmail,
-        email: formData.personalEmail, // Added email field for API
-        personal_email: formData.personalEmail,
+        personal_email: formData.personalEmail, // Match database schema column name
         mobile_number: formData.mobileNumber,
         branch: formData.branch,
         ug_percentage: Number.parseFloat(formData.ugPercentage),
         active_backlogs: formData.activeBacklogs === "yes",
         resume_url: resumeUrl,
+        tenth_percentage: formData.tenthPercentage ? Number.parseFloat(formData.tenthPercentage) : null,
+        twelfth_percentage: formData.twelfthPercentage ? Number.parseFloat(formData.twelfthPercentage) : null,
+        course: formData.course || null,
+        current_location: formData.currentLocation || null,
+        year_of_graduation: formData.yearOfGraduation ? parseInt(formData.yearOfGraduation) : null,
+        verification_status: "pending_verification",
         placement_status: {
           offers: [],
           accepted_offers: 0,
@@ -247,6 +273,13 @@ export function RegistrationForm() {
 
       // Store student data in localStorage for session management
       localStorage.setItem("student_profile", JSON.stringify(result.data))
+
+      // Refresh auth context to load the new student data
+      try {
+        await checkAuth()
+      } catch (authError) {
+        console.warn("Could not refresh auth context:", authError)
+      }
 
       router.push("/dashboard")
     } catch (error: any) {
@@ -402,19 +435,103 @@ export function RegistrationForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ugPercentage">UG Percentage *</Label>
-              <Input
-                id="ugPercentage"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={formData.ugPercentage}
-                onChange={(e) => handleInputChange("ugPercentage", e.target.value)}
-                placeholder="85.5"
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <Label htmlFor="course">Course *</Label>
+              <Select value={formData.course} onValueChange={(value) => handleInputChange("course", value)}>
+                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
+                  <SelectValue placeholder="Select your course" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B.Tech">B.Tech</SelectItem>
+                  <SelectItem value="B.Sc">B.Sc</SelectItem>
+                  <SelectItem value="M.Tech">M.Tech</SelectItem>
+                  <SelectItem value="M.Sc">M.Sc</SelectItem>
+                  <SelectItem value="MBA">MBA</SelectItem>
+                  <SelectItem value="MCA">MCA</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tenthPercentage">10th Percentage *</Label>
+                <Input
+                  id="tenthPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.tenthPercentage}
+                  onChange={(e) => handleInputChange("tenthPercentage", e.target.value)}
+                  placeholder="85.5"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="twelfthPercentage">12th Percentage *</Label>
+                <Input
+                  id="twelfthPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.twelfthPercentage}
+                  onChange={(e) => handleInputChange("twelfthPercentage", e.target.value)}
+                  placeholder="88.2"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ugPercentage">UG Percentage *</Label>
+                <Input
+                  id="ugPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.ugPercentage}
+                  onChange={(e) => handleInputChange("ugPercentage", e.target.value)}
+                  placeholder="85.5"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="yearOfGraduation">Year of Graduation *</Label>
+                <Select value={formData.yearOfGraduation} onValueChange={(value) => handleInputChange("yearOfGraduation", value)}>
+                  <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
+                    <SelectValue placeholder="Select graduation year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, i) => {
+                      const year = new Date().getFullYear() + i
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currentLocation">Current Location *</Label>
+                <Input
+                  id="currentLocation"
+                  value={formData.currentLocation}
+                  onChange={(e) => handleInputChange("currentLocation", e.target.value)}
+                  placeholder="Bangalore, Karnataka"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-3">

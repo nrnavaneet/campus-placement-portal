@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
       .select('*')
 
     if (studentId) {
-      query = query.eq('id', studentId)
+      // student_id parameter represents user_id from auth
+      query = query.eq('user_id', studentId)
     } else if (email) {
       query = query.eq('college_email', email)
     } else {

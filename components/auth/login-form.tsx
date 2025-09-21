@@ -21,7 +21,7 @@ export function LoginForm() {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [resetEmail, setResetEmail] = useState("")
   const router = useRouter()
-  const { resetPassword } = useAuth()
+  const { login, resetPassword } = useAuth()
 
   const validateStudentEmail = (email: string) => {
     // Format: 22[any letters][any numbers]@msruas.ac.in
@@ -46,26 +46,41 @@ export function LoginForm() {
     }
 
     try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) throw error
-
-      // Check if student profile exists
-      const { data: studentData, error: studentError } = await supabaseClient
-        .from("student_details")
-        .select("*")
-        .eq("user_id", data.user?.id)
-        .single()
-
-      if (studentError && studentError.code === "PGRST116") {
-        // Student profile doesn't exist, redirect to registration
-        router.push("/register")
-      } else {
-        // Student profile exists, go to dashboard
+      // Use auth context login function which properly loads student data
+      const success = await login(email, password)
+      
+      if (success) {
+        // Login successful and student data loaded
         router.push("/dashboard")
+      } else {
+        // Check if it's a registration issue
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password,
+          })
+
+          if (error) {
+            if (error.message.includes("Invalid login credentials")) {
+              throw new Error("User doesn't exist, please register first")
+            }
+            throw error
+          }
+
+          // If auth succeeds but login() failed, it means no student profile
+          if (data.user) {
+            setError("Please complete your registration first")
+            setTimeout(() => {
+              router.push("/register")
+            }, 2000)
+          }
+        } catch (authError: any) {
+          if (authError.message.includes("Invalid login credentials")) {
+            setError("User doesn't exist, please register first")
+          } else {
+            setError(authError.message || "Login failed. Please try again.")
+          }
+        }
       }
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
@@ -244,7 +259,7 @@ export function LoginForm() {
               <Tabs defaultValue="login" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Login</TabsTrigger>
-                  <TabsTrigger value="register">Register</TabsTrigger>
+                  <TabsTrigger value="register">Verify & Register</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="login">

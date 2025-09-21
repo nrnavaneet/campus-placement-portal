@@ -20,7 +20,9 @@ interface AuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
+  checkAuth: () => Promise<void>
   getStudentByEmail: (email: string) => Promise<StudentDetails | null>
+  getStudentByUserId: (userId: string) => Promise<StudentDetails | null>
   resetPassword: (email: string) => Promise<boolean>
   updatePassword: (currentPassword: string, newPassword: string) => Promise<boolean>
 }
@@ -30,7 +32,9 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: async () => false,
   logout: () => {},
+  checkAuth: async () => {},
   getStudentByEmail: async () => null,
+  getStudentByUserId: async () => null,
   resetPassword: async () => false,
   updatePassword: async () => false,
 })
@@ -60,8 +64,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
-        // Get student details from database
-        const studentData = await getStudentByEmail(user.email!)
+        // Get student details using user_id (more reliable)
+        const studentData = await getStudentByUserId(user.id)
         if (studentData) {
           setStudent(studentData)
         }
@@ -71,6 +75,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const getStudentByUserId = async (userId: string): Promise<StudentDetails | null> => {
+    try {
+      const response = await fetch(`/api/student/profile?student_id=${encodeURIComponent(userId)}`)
+      if (response.ok) {
+        const result = await response.json()
+        return result.data
+      }
+    } catch (error) {
+      console.error('Error fetching student by user_id:', error)
+    }
+    return null
   }
 
   const getStudentByEmail = async (email: string): Promise<StudentDetails | null> => {
@@ -96,7 +113,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) throw error
 
       if (data.user) {
-        const studentData = await getStudentByEmail(data.user.email!)
+        const studentData = await getStudentByUserId(data.user.id)
         if (studentData) {
           setStudent(studentData)
           return true
@@ -165,7 +182,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isLoading, 
         login, 
         logout, 
+        checkAuth,
         getStudentByEmail,
+        getStudentByUserId,
         resetPassword,
         updatePassword 
       }}

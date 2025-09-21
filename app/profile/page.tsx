@@ -91,7 +91,7 @@ export default function ProfilePage() {
     if (!student) return
 
     let completed = 0
-    const totalFields = 12
+    const totalFields = 17 // Updated to include new fields
 
     // Basic fields
     if (student.first_name) completed++
@@ -104,6 +104,13 @@ export default function ProfilePage() {
     if (student.branch) completed++
     if (student.ug_percentage) completed++
     if (student.resume_url) completed++
+
+    // New academic fields
+    if (student.tenth_percentage) completed++
+    if (student.twelfth_percentage) completed++
+    if (student.course) completed++
+    if (student.current_location) completed++
+    if (student.year_of_graduation) completed++
 
     // Additional completeness checks
     if (student.ug_percentage >= 60) completed++ // Good percentage
@@ -511,17 +518,106 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="percentage">UG Percentage</Label>
-                    <Input
-                      id="percentage"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={student.ug_percentage}
-                      onChange={(e) => handleInputChange("ug_percentage", Number.parseFloat(e.target.value))}
+                    <Label htmlFor="course">Course</Label>
+                    <Select
+                      value={student.course || ""}
+                      onValueChange={(value) => handleInputChange("course", value)}
                       disabled={!isEditing}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your course" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="B.Tech">B.Tech</SelectItem>
+                        <SelectItem value="B.Sc">B.Sc</SelectItem>
+                        <SelectItem value="M.Tech">M.Tech</SelectItem>
+                        <SelectItem value="M.Sc">M.Sc</SelectItem>
+                        <SelectItem value="MBA">MBA</SelectItem>
+                        <SelectItem value="MCA">MCA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tenth-percentage">10th Percentage</Label>
+                      <Input
+                        id="tenth-percentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={student.tenth_percentage || ""}
+                        onChange={(e) => handleInputChange("tenth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                        disabled={!isEditing}
+                        placeholder="85.5"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="twelfth-percentage">12th Percentage</Label>
+                      <Input
+                        id="twelfth-percentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={student.twelfth_percentage || ""}
+                        onChange={(e) => handleInputChange("twelfth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                        disabled={!isEditing}
+                        placeholder="88.2"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="percentage">UG Percentage</Label>
+                      <Input
+                        id="percentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={student.ug_percentage}
+                        onChange={(e) => handleInputChange("ug_percentage", Number.parseFloat(e.target.value))}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="graduation-year">Year of Graduation</Label>
+                      <Select
+                        value={student.year_of_graduation?.toString() || ""}
+                        onValueChange={(value) => handleInputChange("year_of_graduation", value ? parseInt(value) : null)}
+                        disabled={!isEditing}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select graduation year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 5 }, (_, i) => {
+                            const year = new Date().getFullYear() + i
+                            return (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="current-location">Current Location</Label>
+                      <Input
+                        id="current-location"
+                        value={student.current_location || ""}
+                        onChange={(e) => handleInputChange("current_location", e.target.value)}
+                        disabled={!isEditing}
+                        placeholder="Bangalore, Karnataka"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-3">

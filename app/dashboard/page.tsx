@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 
 export default function DashboardPage() {
-  const { student } = useAuth()
+  const { student, isLoading } = useAuth()
   const router = useRouter()
   
   const [stats, setStats] = useState({
@@ -28,13 +28,16 @@ export default function DashboardPage() {
   const [studentProfile, setStudentProfile] = useState<any>(null)
 
   useEffect(() => {
+    // Wait for auth context to finish loading before checking authentication
+    if (isLoading) return
+    
     if (!student) {
       toast.error("Please log in to access the dashboard")
       router.push("/")
       return
     }
     fetchStudentData()
-  }, [student, router])
+  }, [student, isLoading, router])
 
   const fetchStudentData = async () => {
     if (!student) return
@@ -166,6 +169,18 @@ export default function DashboardPage() {
       default:
         return status
     }
+  }
+
+  // Show loading state while auth is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading your dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

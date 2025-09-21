@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prepare update data
+    // Prepare update data for application_status table
     const updateData: any = {
       current_stage,
       updated_at: new Date().toISOString(),
@@ -76,11 +76,6 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
         notes
       } : undefined
-    }
-
-    // Add package amount if status is placed
-    if (current_stage === 'placed' && package_amount) {
-      updateData.package_amount = package_amount * 100000 // Convert lakhs to rupees
     }
 
     // Update application status
@@ -100,6 +95,59 @@ export async function POST(request: NextRequest) {
         { error: error.message },
         { status: 500 }
       )
+    }
+
+    // If student is placed, update their placement status in student_details
+    if (current_stage === 'placed' && package_amount) {
+      const packageInRupees = package_amount * 100000 // Convert lakhs to rupees
+      
+      // Get current student data
+      const { data: studentData, error: studentError } = await supabaseAdmin
+        .from('student_details')
+        .select('placement_status')
+        .eq('college_reg_no', data.student_reg_no)
+        .single()
+
+      if (studentError) {
+        console.error('Error fetching student data:', studentError)
+      } else {
+        // Update placement status
+        const currentPlacementStatus = studentData.placement_status || {
+          offers: [],
+          accepted_offers: 0,
+          max_ctc: 0,
+          max_offers_allowed: 3
+        }
+
+        // Add this offer to the placement status
+        const updatedPlacementStatus = {
+          ...currentPlacementStatus,
+          offers: [
+            ...(currentPlacementStatus.offers || []),
+            {
+              company: data.jobs.company_name,
+              job_title: data.jobs.title,
+              package: packageInRupees,
+              placed_date: new Date().toISOString()
+            }
+          ],
+          accepted_offers: (currentPlacementStatus.accepted_offers || 0) + 1,
+          max_ctc: Math.max(currentPlacementStatus.max_ctc || 0, packageInRupees)
+        }
+
+        // Update student placement status
+        const { error: updateStudentError } = await supabaseAdmin
+          .from('student_details')
+          .update({
+            placement_status: updatedPlacementStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('college_reg_no', data.student_reg_no)
+
+        if (updateStudentError) {
+          console.error('Error updating student placement status:', updateStudentError)
+        }
+      }
     }
 
     // Send email notification to student about status update

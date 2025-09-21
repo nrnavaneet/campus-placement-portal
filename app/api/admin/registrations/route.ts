@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const registrationData = await request.json()
     
     // Validate required fields
-    if (!registrationData.name || !registrationData.email) {
+    if (!registrationData.first_name || !registrationData.personal_email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Insert registration using service role key (bypasses RLS)
     const { data, error } = await supabaseAdmin
-      .from('student_registrations')
+      .from('student_details')
       .insert(registrationData)
       .select()
       .single()
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add activity tracking for user registration
-    await addActivity(`New student "${data.name}" registered`, 'user_registered', `Branch: ${data.branch}`)
+    await addActivity(`New student "${data.first_name}" registered`, 'user_registered', `Branch: ${data.branch}`)
 
     return NextResponse.json({ data })
   } catch (err) {
