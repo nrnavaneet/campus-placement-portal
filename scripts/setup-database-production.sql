@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.jobs (
     no_backlogs_required BOOLEAN DEFAULT TRUE,
     counts_as_offer BOOLEAN DEFAULT TRUE,
     timeline JSONB NOT NULL DEFAULT '[]',
-    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'ongoing', 'closed')),
+    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'closed')),
     application_deadline TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -279,7 +279,7 @@ INSERT INTO public.jobs (title, company_name, description, package_min, package_
         {"stage": "Technical Interview", "date": "2024-02-18", "description": "Coding and design discussion"},
         {"stage": "Final Round", "date": "2024-02-28", "description": "Cultural fit and offer discussion"}
     ]',
-    'ongoing',
+    'active',
     '2024-12-20 23:59:59'
 )
 ON CONFLICT DO NOTHING;

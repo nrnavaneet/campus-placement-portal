@@ -63,33 +63,76 @@ export async function GET(request: NextRequest) {
     // Create a zip file
     const zip = new JSZip()
 
-    // Create CSV data for student information with only requested fields
+    // Create CSV data for student information with comprehensive fields
     const csvHeaders = [
       'Registration Number',
       'Name', 
-      'Email',
+      'College Email',
       'Personal Email',
       'Mobile',
-      'Branch',
-      'UG Percentage',
-      'Active Backlogs',
+      'Gender',
       'Date of Birth',
-      'Gender'
+      'Branch',
+      'Course',
+      'UG Percentage',
+      '10th Percentage',
+      '12th Percentage',
+      'Year of Graduation',
+      'Current Location',
+      'Active Backlogs',
+      'PWD Status',
+      'Resume Status',
+      'Verification Status',
+      'Placement Status',
+      'Current Offers',
+      'Accepted Offers',
+      'Max CTC (₹L)',
+      'Max Offers Allowed',
+      'Job Title',
+      'Company Name',
+      'Application Status',
+      'Current Stage',
+      'Applied Date',
+      'Last Updated',
+      'Package Range (₹L)',
+      'Created Date'
     ].join(',')
 
     const csvRows = applications.map(app => {
       const student = students?.find(s => s.college_reg_no === app.student_reg_no)
+      const job = app.jobs
       return [
         app.student_reg_no,
         student?.first_name || 'N/A',
         student?.college_email || 'N/A',
         student?.personal_email || 'N/A', 
         student?.mobile_number || 'N/A',
+        student?.gender || 'N/A',
+        student?.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-IN') : 'N/A',
         student?.branch || 'N/A',
+        student?.course || 'N/A',
         student?.ug_percentage || 'N/A',
+        student?.tenth_percentage || 'N/A',
+        student?.twelfth_percentage || 'N/A',
+        student?.year_of_graduation || 'N/A',
+        student?.current_location || 'N/A',
         student?.active_backlogs ? 'Yes' : 'No',
-        student?.date_of_birth || 'N/A',
-        student?.gender || 'N/A'
+        student?.pwd ? 'Yes' : 'No',
+        student?.resume_url ? 'Uploaded' : 'Not Uploaded',
+        student?.verification_status || 'pending_verification',
+        student?.placement_status ? 'Active' : 'Not Active',
+        student?.placement_status?.offers?.length || 0,
+        student?.placement_status?.accepted_offers || 0,
+        student?.placement_status?.max_ctc ? (student.placement_status.max_ctc / 100000).toFixed(1) : '0',
+        student?.placement_status?.max_offers_allowed || 0,
+        job?.title || 'N/A',
+        job?.company_name || 'N/A',
+        app.current_stage || 'N/A',
+        app.current_stage || 'N/A',
+        app.applied_at ? new Date(app.applied_at).toLocaleDateString('en-IN') : 'N/A',
+        app.updated_at ? new Date(app.updated_at).toLocaleDateString('en-IN') : 'N/A',
+        job ? `₹${(job.package_min / 100000).toFixed(1)}L - ₹${(job.package_max / 100000).toFixed(1)}L` : 'N/A',
+        student?.created_at ? new Date(student.created_at).toLocaleDateString('en-IN') : 'N/A'
       ].map(field => `"${field}"`).join(',')
     })
 

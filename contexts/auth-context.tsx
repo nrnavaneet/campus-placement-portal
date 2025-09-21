@@ -57,6 +57,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     checkAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const studentData = await getStudentByUserId(session.user.id)
+        if (studentData) {
+          setStudent(studentData)
+        }
+        setIsLoading(false)
+      } else if (event === 'SIGNED_OUT') {
+        setStudent(null)
+        setIsLoading(false)
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Ensure student data is still available after token refresh
+        if (!student) {
+          const studentData = await getStudentByUserId(session.user.id)
+          if (studentData) {
+            setStudent(studentData)
+          }
+        }
+        setIsLoading(false)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const checkAuth = async () => {

@@ -260,7 +260,7 @@ const mockJobs = [
       { stage: "Technical Interview", date: "2024-02-18", description: "Coding and design discussion" },
       { stage: "Final Round", date: "2024-02-28", description: "Cultural fit and offer discussion" },
     ],
-    status: "ongoing",
+    status: "active",
     application_deadline: "2024-12-20T23:59:59.000Z",
     created_at: "2024-01-01T00:00:00.000Z",
     updated_at: "2024-01-01T00:00:00.000Z",
@@ -596,7 +596,7 @@ export interface Job {
   no_backlogs_required: boolean
   counts_as_offer: boolean
   timeline: any[]
-  status: "upcoming" | "active" | "ongoing" | "closed"
+  status: "upcoming" | "active" | "closed"
   application_deadline: string
   tpo?: string
   created_at: string

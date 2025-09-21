@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     branches_allowed: [] as string[],
     no_backlogs_required: true,
     application_deadline: "",
-    status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
+    status: "upcoming" as "upcoming" | "active" | "closed",
     job_title: "",
   })
   const [isGrievanceDialogOpen, setIsGrievanceDialogOpen] = useState(false)
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
     branches_allowed: [] as string[],
     no_backlogs_required: true,
     application_deadline: "",
-    status: "upcoming" as "upcoming" | "active" | "ongoing" | "closed",
+    status: "upcoming" as "upcoming" | "active" | "closed",
     job_title: "",
   })
   const { theme, setTheme } = useTheme()
@@ -483,7 +483,7 @@ export default function AdminDashboard() {
       year_of_graduation: job.eligibility_criteria?.year_of_graduation?.toString() || "",
       branches_allowed: job.branches_allowed || [],
       no_backlogs_required: job.no_backlogs_required || true,
-      application_deadline: job.application_deadline ? new Date(job.application_deadline).toISOString().split('T')[0] : "",
+      application_deadline: job.application_deadline ? new Date(job.application_deadline).toISOString().slice(0, 16) : "",
       status: job.status,
       job_title: job.tpo || "",
     })
@@ -686,16 +686,60 @@ export default function AdminDashboard() {
   const exportStudentData = () => {
     try {
       const csvContent = [
-        ["Name", "Registration No", "Email", "Branch", "Percentage", "Mobile", "Resume Status"].join(","),
+        [
+          "Name", 
+          "Registration No", 
+          "College Email", 
+          "Personal Email",
+          "Mobile", 
+          "Gender",
+          "Date of Birth",
+          "Branch", 
+          "Course",
+          "UG Percentage", 
+          "10th Percentage",
+          "12th Percentage",
+          "Year of Graduation",
+          "Current Location",
+          "Active Backlogs", 
+          "PWD Status",
+          "Resume Status",
+          "Verification Status",
+          "Placement Status",
+          "Current Offers",
+          "Accepted Offers",
+          "Max CTC (₹L)",
+          "Max Offers Allowed",
+          "Created Date",
+          "Updated Date"
+        ].join(","),
         ...students.map((student) =>
           [
-            student.first_name,
+            `"${student.first_name}"`,
             student.college_reg_no,
             student.college_email,
-            student.branch,
-            student.ug_percentage,
+            student.personal_email || "",
             student.mobile_number,
+            student.gender,
+            student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-IN') : "",
+            `"${student.branch}"`,
+            student.course || "",
+            student.ug_percentage,
+            student.tenth_percentage || "",
+            student.twelfth_percentage || "",
+            student.year_of_graduation || "",
+            student.current_location || "",
+            student.active_backlogs ? "Yes" : "No",
+            student.pwd ? "Yes" : "No",
             student.resume_url ? "Uploaded" : "Not Uploaded",
+            student.verification_status || "pending_verification",
+            student.placement_status ? "Active" : "Not Active",
+            student.placement_status?.offers?.length || 0,
+            student.placement_status?.accepted_offers || 0,
+            student.placement_status?.max_ctc ? (student.placement_status.max_ctc / 100000).toFixed(1) : "0",
+            student.placement_status?.max_offers_allowed || 0,
+            new Date(student.created_at).toLocaleDateString('en-IN'),
+            new Date(student.updated_at).toLocaleDateString('en-IN')
           ].join(","),
         ),
       ].join("\n")
@@ -821,11 +865,18 @@ export default function AdminDashboard() {
           "Package Min (₹L)",
           "Package Max (₹L)",
           "Min UG Percentage",
+          "Min 10th Percentage",
+          "Min 12th Percentage",
+          "Eligible Courses",
+          "Graduation Year Requirement",
           "Status",
           "Application Deadline",
           "Eligible Branches",
           "No Backlogs Required",
-          "Created Date"
+          "TPO",
+          "Counts As Offer",
+          "Created Date",
+          "Updated Date"
         ].join(","),
         ...jobsToExport.map((job) =>
           [
@@ -836,11 +887,18 @@ export default function AdminDashboard() {
             (job.package_min / 100000).toFixed(1),
             (job.package_max / 100000).toFixed(1),
             job.min_ug_percentage,
+            job.min_tenth_percentage || "",
+            job.min_twelfth_percentage || "",
+            job.eligible_courses ? `"${job.eligible_courses.join(', ')}"` : "",
+            job.eligibility_criteria?.year_of_graduation || "",
             job.status.toUpperCase(),
             new Date(job.application_deadline).toLocaleDateString('en-IN'),
             `"${job.branches_allowed.join(', ')}"`,
             job.no_backlogs_required ? 'Yes' : 'No',
-            new Date(job.created_at || Date.now()).toLocaleDateString('en-IN')
+            job.tpo || "",
+            job.counts_as_offer ? 'Yes' : 'No',
+            new Date(job.created_at || Date.now()).toLocaleDateString('en-IN'),
+            new Date(job.updated_at || Date.now()).toLocaleDateString('en-IN')
           ].join(","),
         ),
       ].join("\n")
@@ -890,6 +948,26 @@ export default function AdminDashboard() {
           ? `₹${(job.package_min / 100000).toFixed(1)}L`
           : `₹${(job.package_min / 100000).toFixed(1)}L - ₹${(job.package_max / 100000).toFixed(1)}L`,
         status: job.status,
+        eligibility: {
+          minUG: job.min_ug_percentage,
+          min10th: job.min_tenth_percentage,
+          min12th: job.min_twelfth_percentage,
+          courses: job.eligible_courses,
+          gradYear: job.eligibility_criteria?.year_of_graduation
+        }
+      })),
+      placedStudentDetails: students.filter(s => s.placement_status.accepted_offers > 0).map(student => ({
+        name: student.first_name,
+        regNo: student.college_reg_no,
+        branch: student.branch,
+        course: student.course,
+        ugPercentage: student.ug_percentage,
+        tenthPercentage: student.tenth_percentage,
+        twelfthPercentage: student.twelfth_percentage,
+        graduationYear: student.year_of_graduation,
+        maxCTC: student.placement_status.max_ctc,
+        totalOffers: student.placement_status.offers?.length || 0,
+        acceptedOffers: student.placement_status.accepted_offers
       })),
     }
 
@@ -910,10 +988,30 @@ ${reportData.branchWiseData
   .map((branch) => `${branch.branch}: ${branch.placed}/${branch.total} (${branch.rate}%)`)
   .join("\n")}
 
-COMPANY-WISE DATA
-=================
+COMPANY-WISE DATA WITH ELIGIBILITY CRITERIA
+============================================
 ${reportData.companyWiseData
-  .map((company) => `${company.company} - ${company.position} (${company.package}) - ${company.status}`)
+  .map((company) => `${company.company} - ${company.position}
+  Package: ${company.package}
+  Status: ${company.status}
+  Min UG: ${company.eligibility.minUG}%
+  Min 10th: ${company.eligibility.min10th || 'N/A'}%
+  Min 12th: ${company.eligibility.min12th || 'N/A'}%
+  Courses: ${company.eligibility.courses ? company.eligibility.courses.join(', ') : 'All'}
+  Grad Year: ${company.eligibility.gradYear || 'Any'}
+  `)
+  .join("\n")}
+
+PLACED STUDENT DETAILS
+======================
+${reportData.placedStudentDetails
+  .map((student) => `${student.name} (${student.regNo})
+  Branch: ${student.branch} | Course: ${student.course || 'N/A'}
+  UG: ${student.ugPercentage}% | 10th: ${student.tenthPercentage || 'N/A'}% | 12th: ${student.twelfthPercentage || 'N/A'}%
+  Graduation Year: ${student.graduationYear || 'N/A'}
+  Max CTC: ₹${student.maxCTC ? (student.maxCTC / 100000).toFixed(1) : '0'}L
+  Total Offers: ${student.totalOffers} | Accepted: ${student.acceptedOffers}
+  `)
   .join("\n")}
     `.trim()
 
@@ -966,16 +1064,52 @@ ${reportData.companyWiseData
     }
 
     const csvContent = [
-      ["Company", "Job Title", "Student Name", "Registration No", "Branch", "Status", "Package"].join(","),
+      [
+        "Company", 
+        "Job Title", 
+        "Student Name", 
+        "Registration No", 
+        "College Email",
+        "Personal Email",
+        "Mobile",
+        "Gender",
+        "Branch", 
+        "Course",
+        "UG Percentage",
+        "10th Percentage", 
+        "12th Percentage",
+        "Year of Graduation",
+        "Current Location",
+        "Active Backlogs",
+        "PWD Status",
+        "Application Status", 
+        "Package (₹L)",
+        "Applied Date",
+        "Current Stage"
+      ].join(","),
       ...dataToExport.map((item) =>
         [
-          item.company_name,
-          item.job_title,
-          item.student_name,
+          `"${item.company_name}"`,
+          `"${item.job_title}"`,
+          `"${item.student_name}"`,
           item.student_reg_no,
-          item.branch,
-          item.status,
-          item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A",
+          item.college_email || "",
+          item.personal_email || "",
+          item.mobile_number || "",
+          item.gender || "",
+          `"${item.branch}"`,
+          item.course || "",
+          item.ug_percentage || "",
+          item.tenth_percentage || "",
+          item.twelfth_percentage || "",
+          item.year_of_graduation || "",
+          item.current_location || "",
+          item.active_backlogs ? "Yes" : "No",
+          item.pwd ? "Yes" : "No",
+          item.status || "",
+          item.package ? `${(item.package / 100000).toFixed(1)}` : "N/A",
+          item.applied_at ? new Date(item.applied_at).toLocaleDateString('en-IN') : "",
+          item.current_stage || ""
         ].join(",")
       ),
     ].join("\n")
@@ -1514,7 +1648,7 @@ ${reportData.companyWiseData
                             <Label htmlFor="status">Job Status</Label>
                             <Select
                               value={newJob.status}
-                              onValueChange={(value: "upcoming" | "active" | "ongoing" | "closed") => 
+                              onValueChange={(value: "upcoming" | "active" | "closed") => 
                                 setNewJob({ ...newJob, status: value })
                               }
                             >
@@ -1524,7 +1658,6 @@ ${reportData.companyWiseData
                               <SelectContent>
                                 <SelectItem value="upcoming">Upcoming</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="ongoing">Ongoing</SelectItem>
                                 <SelectItem value="closed">Closed</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1670,17 +1803,9 @@ ${reportData.companyWiseData
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="ongoing">Ongoing</SelectItem>
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  onClick={() => setIsAddJobOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add New Job
-                </Button>
               </div>
             </div>
 
@@ -1699,9 +1824,7 @@ ${reportData.companyWiseData
                             ? "bg-green-100 text-green-800"
                             : job.status === "upcoming"
                               ? "bg-blue-100 text-blue-800"
-                              : job.status === "ongoing"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
+                              : "bg-gray-100 text-gray-800"
                         }
                       >
                         {job.status}
@@ -2257,9 +2380,7 @@ ${reportData.companyWiseData
                         ? "bg-green-100 text-green-800"
                         : selectedJob.status === "upcoming"
                           ? "bg-blue-100 text-blue-800"
-                          : selectedJob.status === "ongoing"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
+                          : "bg-gray-100 text-gray-800"
                     }>
                       {selectedJob.status}
                     </Badge>
@@ -2509,7 +2630,7 @@ ${reportData.companyWiseData
                   <Label htmlFor="edit-deadline">Application Deadline</Label>
                   <Input
                     id="edit-deadline"
-                    type="date"
+                    type="datetime-local"
                     value={editJob.application_deadline}
                     onChange={(e) => setEditJob({ ...editJob, application_deadline: e.target.value })}
                   />
@@ -2535,7 +2656,6 @@ ${reportData.companyWiseData
                   <SelectContent>
                     <SelectItem value="upcoming">Upcoming</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="ongoing">Ongoing</SelectItem>
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
@@ -2810,24 +2930,34 @@ ${reportData.companyWiseData
                 <table className="w-full text-sm">
                   <thead className="border-b bg-gray-50">
                     <tr>
-                      <th className="p-3 text-left font-medium">Company</th>
-                      <th className="p-3 text-left font-medium">Job Title</th>
-                      <th className="p-3 text-left font-medium">Student</th>
-                      <th className="p-3 text-left font-medium">Reg No</th>
-                      <th className="p-3 text-left font-medium">Branch</th>
-                      <th className="p-3 text-left font-medium">Status</th>
-                      <th className="p-3 text-left font-medium">Package</th>
+                      <th className="p-2 text-left font-medium">Company</th>
+                      <th className="p-2 text-left font-medium">Job Title</th>
+                      <th className="p-2 text-left font-medium">Student</th>
+                      <th className="p-2 text-left font-medium">Reg No</th>
+                      <th className="p-2 text-left font-medium">Branch</th>
+                      <th className="p-2 text-left font-medium">Course</th>
+                      <th className="p-2 text-left font-medium">UG%</th>
+                      <th className="p-2 text-left font-medium">10th%</th>
+                      <th className="p-2 text-left font-medium">12th%</th>
+                      <th className="p-2 text-left font-medium">Grad Year</th>
+                      <th className="p-2 text-left font-medium">Status</th>
+                      <th className="p-2 text-left font-medium">Package</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(companyReportData || []).map((item, index) => (
                       <tr key={index} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-medium">{item.company_name}</td>
-                        <td className="p-3">{item.job_title}</td>
-                        <td className="p-3">{item.student_name}</td>
-                        <td className="p-3 font-mono text-xs">{item.student_reg_no}</td>
-                        <td className="p-3 text-xs">{item.branch}</td>
-                        <td className="p-3">
+                        <td className="p-2 font-medium text-xs">{item.company_name}</td>
+                        <td className="p-2 text-xs">{item.job_title}</td>
+                        <td className="p-2 text-xs">{item.student_name}</td>
+                        <td className="p-2 font-mono text-xs">{item.student_reg_no}</td>
+                        <td className="p-2 text-xs">{item.branch}</td>
+                        <td className="p-2 text-xs">{item.course || 'N/A'}</td>
+                        <td className="p-2 text-xs">{item.ug_percentage || 'N/A'}</td>
+                        <td className="p-2 text-xs">{item.tenth_percentage || 'N/A'}</td>
+                        <td className="p-2 text-xs">{item.twelfth_percentage || 'N/A'}</td>
+                        <td className="p-2 text-xs">{item.year_of_graduation || 'N/A'}</td>
+                        <td className="p-2">
                           <Badge 
                             className={
                               item.status === 'placed' 
@@ -2842,7 +2972,7 @@ ${reportData.companyWiseData
                             {item.status}
                           </Badge>
                         </td>
-                        <td className="p-3 font-mono text-xs">
+                        <td className="p-2 font-mono text-xs">
                           {item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A"}
                         </td>
                       </tr>
