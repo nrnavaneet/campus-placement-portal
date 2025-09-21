@@ -579,6 +579,15 @@ export interface StudentDetails {
   updated_at: string
 }
 
+export interface PlacementPolicy {
+  id: string
+  max_offers_allowed: number
+  second_offer_multiplier: number
+  policy_description?: string
+  effective_from: string
+  created_at: string
+}
+
 export interface Job {
   id: string
   title: string

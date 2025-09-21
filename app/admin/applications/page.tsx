@@ -28,6 +28,7 @@ import {
   Search,
   ArrowLeft
 } from "lucide-react"
+import type { Job } from "@/lib/supabase"
 
 interface Application {
   id: string
@@ -52,13 +53,6 @@ interface ApplicationRound {
   completed_at?: string
   feedback?: string
   score?: number
-}
-
-interface Job {
-  id: string
-  title: string
-  company_name: string
-  status: string
 }
 
 export default function AdminApplicationsPage() {
@@ -558,7 +552,19 @@ export default function AdminApplicationsPage() {
                 <Label htmlFor="app-status">Application Status</Label>
                 <Select 
                   value={appUpdateData.current_stage} 
-                  onValueChange={(value) => setAppUpdateData({...appUpdateData, current_stage: value})}
+                  onValueChange={(value) => {
+                    const updatedData = { ...appUpdateData, current_stage: value }
+                    
+                    // Auto-fill package amount when "placed" is selected
+                    if (value === 'placed' && selectedApplication) {
+                      const job = jobs.find(j => j.id === selectedApplication.job_id)
+                      if (job && job.package_min) {
+                        updatedData.package_amount = (job.package_min / 100000).toString() // Convert to lakhs
+                      }
+                    }
+                    
+                    setAppUpdateData(updatedData)
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />

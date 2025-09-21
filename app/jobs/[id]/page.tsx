@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { JobApplicationDialog } from "@/components/job-application-dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
-import type { Job, StudentDetails } from "@/lib/supabase"
+import type { Job, StudentDetails, PlacementPolicy } from "@/lib/supabase"
 import {
   CheckCircle,
   AlertCircle,
@@ -30,6 +30,7 @@ export default function JobDetailsPage() {
   const { student: authenticatedStudent } = useAuth()
   const [job, setJob] = useState<Job | null>(null)
   const [student, setStudent] = useState<StudentDetails | null>(null)
+  const [placementPolicy, setPlacementPolicy] = useState<PlacementPolicy | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasApplied, setHasApplied] = useState(false)
   const [eligibilityCheck, setEligibilityCheck] = useState({ eligible: false, reasons: [] as string[] })
@@ -44,15 +45,19 @@ export default function JobDetailsPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch job details from API
-      const jobResponse = await fetch(`/api/admin/jobs/${jobId}`)
-      if (!jobResponse.ok) {
+      // Fetch job details and placement policy in parallel
+      const [jobResponse, policyResponse] = await Promise.allSettled([
+        fetch(`/api/admin/jobs/${jobId}`),
+        fetch('/api/admin/placement-policy')
+      ])
+      
+      if (jobResponse.status !== 'fulfilled' || !jobResponse.value.ok) {
         console.error('Failed to fetch job')
         router.push("/jobs")
         return
       }
       
-      const jobResult = await jobResponse.json()
+      const jobResult = await jobResponse.value.json()
       const jobData = jobResult.data
       
       if (!jobData) {
@@ -61,10 +66,18 @@ export default function JobDetailsPage() {
       }
       setJob(jobData)
 
+      // Process placement policy
+      let policyData = null
+      if (policyResponse.status === 'fulfilled' && policyResponse.value.ok) {
+        const policyResult = await policyResponse.value.json()
+        policyData = policyResult.data && policyResult.data.length > 0 ? policyResult.data[0] : null
+        setPlacementPolicy(policyData)
+      }
+
       // Use authenticated student profile
       if (authenticatedStudent) {
         setStudent(authenticatedStudent)
-        checkEligibility(jobData, authenticatedStudent)
+        checkEligibility(jobData, authenticatedStudent, policyData)
         
         // Check if already applied using API
         checkExistingApplication(authenticatedStudent.college_reg_no)
@@ -99,7 +112,7 @@ export default function JobDetailsPage() {
     }
   }
 
-  const checkEligibility = (jobData: Job, studentData: StudentDetails) => {
+  const checkEligibility = (jobData: Job, studentData: StudentDetails, policyData: PlacementPolicy | null = null) => {
     const reasons: string[] = []
     let eligible = true
 
@@ -143,6 +156,33 @@ export default function JobDetailsPage() {
     if (jobData.no_backlogs_required && studentData.active_backlogs) {
       eligible = false
       reasons.push("Active backlogs not allowed")
+    }
+
+    if (jobData.no_offer && policyData && studentData.placement_status?.offers && studentData.placement_status.offers.length >= policyData.max_offers_allowed) {
+      eligible = false
+      reasons.push(`Maximum offers limit reached (${studentData.placement_status.offers.length}/${policyData.max_offers_allowed})`)
+    }
+
+    // Check placement policy rules (skip for no_offer jobs)
+    if (!jobData.no_offer && policyData && studentData.placement_status?.offers) {
+      const currentOffers = studentData.placement_status.offers
+      
+      // Check max offers limit
+      if (currentOffers.length >= policyData.max_offers_allowed) {
+        eligible = false
+        reasons.push(`Maximum offers limit reached (${currentOffers.length}/${policyData.max_offers_allowed})`)
+      }
+      
+      // Check second offer multiplier rule for jobs that count as offers
+      if (jobData.counts_as_offer && currentOffers.length > 0 && policyData.second_offer_multiplier > 1) {
+        const maxCurrentPackage = Math.max(...currentOffers.map((offer: any) => offer.package || 0))
+        const requiredMinPackage = maxCurrentPackage * policyData.second_offer_multiplier
+        
+        if (jobData.package_min < requiredMinPackage) {
+          eligible = false
+          reasons.push(`Package too low: Need ₹${(requiredMinPackage / 100000).toFixed(1)}L minimum for next offer`)
+        }
+      }
     }
 
     if (!studentData.resume_url) {
@@ -354,6 +394,26 @@ export default function JobDetailsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Eligibility Issues - Show when not eligible */}
+                {student && !eligibilityCheck.eligible && eligibilityCheck.reasons.length > 0 && (
+                  <div className="border-t pt-4 mb-4">
+                    <h3 className="text-sm font-medium text-red-700 dark:text-red-300 mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Why You're Not Eligible
+                    </h3>
+                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                      <ul className="space-y-2">
+                        {eligibilityCheck.reasons.map((reason, index) => (
+                          <li key={index} className="text-sm text-red-800 dark:text-red-200 flex items-start gap-2">
+                            <span className="text-red-500 mt-1">•</span>
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
 
                 {/* Additional Eligibility Criteria */}
                 {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation || job.no_backlogs_required || job.no_offer) && (

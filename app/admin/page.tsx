@@ -76,6 +76,8 @@ export default function AdminDashboard() {
   const [isDeleteJobOpen, setIsDeleteJobOpen] = useState(false)
   const [isViewStudentOpen, setIsViewStudentOpen] = useState(false)
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false)
+  const [isStatusChangeConfirmOpen, setIsStatusChangeConfirmOpen] = useState(false)
+  const [pendingStatusChange, setPendingStatusChange] = useState<{from: string, to: string} | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null)
   const [updateStatusForm, setUpdateStatusForm] = useState({
@@ -827,6 +829,9 @@ export default function AdminDashboard() {
     if (!selectedStudent) return
 
     try {
+      const isChangingToActive = updateStatusForm.status === "active"
+      const wasPlaced = selectedStudent.placement_status.accepted_offers > 0
+      
       const response = await fetch('/api/admin/update-student-status', {
         method: 'POST',
         headers: {
@@ -837,7 +842,8 @@ export default function AdminDashboard() {
           status: updateStatusForm.status,
           company: updateStatusForm.company,
           package_amount: parseFloat(updateStatusForm.package_amount) || 0,
-          notes: updateStatusForm.notes
+          notes: updateStatusForm.notes,
+          clear_offers: isChangingToActive && wasPlaced // Clear offers if changing from placed to active
         }),
       })
 
@@ -2909,7 +2915,18 @@ ${reportData.placedStudentDetails
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={updateStatusForm.status}
-                  onValueChange={(value) => setUpdateStatusForm({ ...updateStatusForm, status: value })}
+                  onValueChange={(value) => {
+                    const currentStatus = updateStatusForm.status
+                    const newStatus = value
+                    
+                    // Check if changing from "placed" to "active" 
+                    if (currentStatus === "placed" && newStatus === "active") {
+                      setPendingStatusChange({ from: currentStatus, to: newStatus })
+                      setIsStatusChangeConfirmOpen(true)
+                    } else {
+                      setUpdateStatusForm({ ...updateStatusForm, status: value })
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -2933,7 +2950,7 @@ ${reportData.placedStudentDetails
                     <SelectValue placeholder="Select company" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Company</SelectItem>
+                    <SelectItem value="none">No Company</SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company} value={company}>
                         {company}
@@ -2973,6 +2990,36 @@ ${reportData.placedStudentDetails
                   Update Status
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Status Change Confirmation Dialog */}
+        <Dialog open={isStatusChangeConfirmOpen} onOpenChange={setIsStatusChangeConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Status Change</DialogTitle>
+              <DialogDescription>
+                You are changing {selectedStudent?.first_name}'s status from "Placed" to "Active". 
+                This will remove all current offers from this student. Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button variant="outline" onClick={() => {
+                setIsStatusChangeConfirmOpen(false)
+                setPendingStatusChange(null)
+              }}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => {
+                if (pendingStatusChange) {
+                  setUpdateStatusForm({ ...updateStatusForm, status: pendingStatusChange.to })
+                  setIsStatusChangeConfirmOpen(false)
+                  setPendingStatusChange(null)
+                }
+              }}>
+                Yes, Remove Offers
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

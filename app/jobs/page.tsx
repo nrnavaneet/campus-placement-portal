@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { JobApplicationDialog } from "@/components/job-application-dialog"
-import { supabaseClient, type Job, type StudentDetails, downloadResume } from "@/lib/supabase"
+import { supabaseClient, type Job, type StudentDetails, type PlacementPolicy, downloadResume } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import {
@@ -87,6 +87,7 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studentProfile, setStudentProfile] = useState<StudentDetails | null>(null)
+  const [placementPolicy, setPlacementPolicy] = useState<PlacementPolicy | null>(null)
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
@@ -123,10 +124,11 @@ export default function JobsPage() {
       }
       setStudentProfile(profileData)
 
-      // Fetch jobs and applications in parallel
-      const [jobsResponse, applicationsResponse] = await Promise.allSettled([
+      // Fetch jobs, applications, and placement policy in parallel
+      const [jobsResponse, applicationsResponse, policyResponse] = await Promise.allSettled([
         fetch('/api/admin/jobs'),
-        fetch(`/api/student/applications?student_id=${profileData.college_reg_no}`)
+        fetch(`/api/student/applications?student_id=${profileData.college_reg_no}`),
+        fetch('/api/admin/placement-policy')
       ])
 
       // Process jobs
@@ -146,6 +148,13 @@ export default function JobsPage() {
         applicationsData = Array.isArray(result) ? result : result.data || []
       }
       setApplicationData(applicationsData)
+
+      // Process placement policy
+      if (policyResponse.status === 'fulfilled' && policyResponse.value.ok) {
+        const policyResult = await policyResponse.value.json()
+        const policyData = policyResult.data && policyResult.data.length > 0 ? policyResult.data[0] : null
+        setPlacementPolicy(policyData)
+      }
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -202,8 +211,28 @@ export default function JobsPage() {
       return false
     }
 
-    if (job.no_offer && student.placement_status?.offers && student.placement_status.offers.length > 0) {
+    if (job.no_offer && placementPolicy && student.placement_status?.offers && student.placement_status.offers.length >= placementPolicy.max_offers_allowed) {
       return false
+    }
+
+    // Check placement policy rules (skip for no_offer jobs)
+    if (!job.no_offer && placementPolicy && student.placement_status?.offers) {
+      const currentOffers = student.placement_status.offers
+      
+      // Check max offers limit
+      if (currentOffers.length >= placementPolicy.max_offers_allowed) {
+        return false
+      }
+      
+      // Check second offer multiplier rule for jobs that count as offers
+      if (job.counts_as_offer && currentOffers.length > 0 && placementPolicy.second_offer_multiplier > 1) {
+        const maxCurrentPackage = Math.max(...currentOffers.map((offer: any) => offer.package || 0))
+        const requiredMinPackage = maxCurrentPackage * placementPolicy.second_offer_multiplier
+        
+        if (job.package_min < requiredMinPackage) {
+          return false
+        }
+      }
     }
 
     if (job.branches_allowed && job.branches_allowed.length > 0) {
@@ -432,30 +461,40 @@ export default function JobsPage() {
                               </span>
                             </div>
                             {!isEligibleForJob(job, studentProfile) && (
-                              <div className="mt-2 text-xs text-gray-500">
+                              <div className="mt-2 text-xs text-gray-500 space-y-1">
                                 {job.min_ug_percentage && studentProfile.ug_percentage < job.min_ug_percentage && (
-                                  <div>• UG percentage: Need {job.min_ug_percentage}%, have {studentProfile.ug_percentage}%</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>UG percentage: Need {job.min_ug_percentage}%, have {studentProfile.ug_percentage}%</span></div>
                                 )}
                                 {job.min_tenth_percentage && studentProfile.tenth_percentage && studentProfile.tenth_percentage < job.min_tenth_percentage && (
-                                  <div>• 10th percentage: Need {job.min_tenth_percentage}%, have {studentProfile.tenth_percentage}%</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>10th percentage: Need {job.min_tenth_percentage}%, have {studentProfile.tenth_percentage}%</span></div>
                                 )}
                                 {job.min_twelfth_percentage && studentProfile.twelfth_percentage && studentProfile.twelfth_percentage < job.min_twelfth_percentage && (
-                                  <div>• 12th percentage: Need {job.min_twelfth_percentage}%, have {studentProfile.twelfth_percentage}%</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>12th percentage: Need {job.min_twelfth_percentage}%, have {studentProfile.twelfth_percentage}%</span></div>
                                 )}
                                 {job.eligible_courses && job.eligible_courses.length > 0 && studentProfile.course && !job.eligible_courses.includes(studentProfile.course) && (
-                                  <div>• Course not eligible: {studentProfile.course}</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Course not eligible: {studentProfile.course}</span></div>
                                 )}
                                 {job.eligibility_criteria?.year_of_graduation && studentProfile.year_of_graduation !== job.eligibility_criteria.year_of_graduation && (
-                                  <div>• Graduation year: Need {job.eligibility_criteria.year_of_graduation}, have {studentProfile.year_of_graduation}</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Graduation year: Need {job.eligibility_criteria.year_of_graduation}, have {studentProfile.year_of_graduation}</span></div>
                                 )}
                                 {job.no_backlogs_required && studentProfile.active_backlogs && (
-                                  <div>• Active backlogs not allowed</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Active backlogs not allowed</span></div>
                                 )}
-                                {job.no_offer && studentProfile.placement_status?.offers && studentProfile.placement_status.offers.length > 0 && (
-                                  <div>• Prior offer not allowed (you have {studentProfile.placement_status.offers.length} offer{studentProfile.placement_status.offers.length > 1 ? 's' : ''})</div>
+                                {job.no_offer && placementPolicy && studentProfile.placement_status?.offers && studentProfile.placement_status.offers.length >= placementPolicy.max_offers_allowed && (
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Maximum offers limit reached ({studentProfile.placement_status.offers.length}/{placementPolicy.max_offers_allowed})</span></div>
+                                )}
+                                {!job.no_offer && placementPolicy && studentProfile.placement_status?.offers && studentProfile.placement_status.offers.length >= placementPolicy.max_offers_allowed && (
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Maximum offers limit reached ({studentProfile.placement_status.offers.length}/{placementPolicy.max_offers_allowed})</span></div>
+                                )}
+                                {!job.no_offer && placementPolicy && job.counts_as_offer && studentProfile.placement_status?.offers && studentProfile.placement_status.offers.length > 0 && placementPolicy.second_offer_multiplier > 1 && (() => {
+                                  const maxCurrentPackage = Math.max(...studentProfile.placement_status.offers.map((offer: any) => offer.package || 0))
+                                  const requiredMinPackage = maxCurrentPackage * placementPolicy.second_offer_multiplier
+                                  return job.package_min < requiredMinPackage
+                                })() && (
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Package too low: Need ₹{(Math.max(...studentProfile.placement_status.offers.map((offer: any) => offer.package || 0)) * placementPolicy.second_offer_multiplier / 100000).toFixed(1)}L minimum for next offer</span></div>
                                 )}
                                 {job.branches_allowed && job.branches_allowed.length > 0 && !job.branches_allowed.includes(studentProfile.branch) && (
-                                  <div>• Branch not eligible: {studentProfile.branch}</div>
+                                  <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>Branch not eligible: {studentProfile.branch}</span></div>
                                 )}
                               </div>
                             )}

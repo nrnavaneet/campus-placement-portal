@@ -13,7 +13,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { student_id, status, company, package_amount, notes } = await request.json()
+    const { student_id, status, company, package_amount, notes, clear_offers } = await request.json()
 
     if (!student_id) {
       return NextResponse.json({ error: 'Student ID is required' }, { status: 400 })
@@ -41,10 +41,11 @@ export async function POST(request: NextRequest) {
       updatedPlacementStatus.interviews_attended = (updatedPlacementStatus.interviews_attended || 0) + 1
     } else if (status === 'rejected') {
       updatedPlacementStatus.rejections = (updatedPlacementStatus.rejections || 0) + 1
-    } else if (status === 'active' && wasPlaced) {
-      // If removing from placed status, reset placement data
+    } else if (status === 'active' && (wasPlaced || clear_offers)) {
+      // If removing from placed status or explicitly clearing offers, reset placement data
       updatedPlacementStatus.accepted_offers = 0
       updatedPlacementStatus.max_ctc = 0
+      updatedPlacementStatus.offers = [] // Clear the offers array
     }
 
     // Update the student record
