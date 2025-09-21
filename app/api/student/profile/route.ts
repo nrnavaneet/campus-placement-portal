@@ -59,6 +59,64 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    console.log('Creating student profile:', body)
+
+    // Create student profile
+    const { data: newStudent, error } = await supabaseAdmin
+      .from('student_details')
+      .insert({
+        ...body,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating student profile:', error)
+      return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 })
+    }
+
+    // Auto-create default settings for the new student
+    const defaultSettings = {
+      newOpportunities: true,
+      placementCongratulations: true
+    }
+
+    try {
+      await supabaseAdmin
+        .from('student_settings')
+        .insert({
+          student_id: newStudent.id,
+          settings: defaultSettings,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      
+      console.log('Default settings created for new student:', newStudent.id)
+    } catch (settingsError) {
+      console.error('Error creating default settings for student:', settingsError)
+      // Don't fail the profile creation if settings creation fails
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile created successfully',
+      data: newStudent
+    })
+
+  } catch (error) {
+    console.error('Error creating student profile:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()

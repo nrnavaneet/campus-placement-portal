@@ -242,11 +242,11 @@ export default function JobsPage() {
     }
 
     // Check additional eligibility criteria
-    if (job.min_tenth_percentage && student.tenth_percentage && student.tenth_percentage < job.min_tenth_percentage) {
+    if (job.min_tenth_percentage && student.tenth_percentage !== null && student.tenth_percentage !== undefined && student.tenth_percentage < job.min_tenth_percentage) {
       return false
     }
 
-    if (job.min_twelfth_percentage && student.twelfth_percentage && student.twelfth_percentage < job.min_twelfth_percentage) {
+    if (job.min_twelfth_percentage && student.twelfth_percentage !== null && student.twelfth_percentage !== undefined && student.twelfth_percentage < job.min_twelfth_percentage) {
       return false
     }
 
@@ -465,10 +465,10 @@ export default function JobsPage() {
                                 {job.min_ug_percentage && studentProfile.ug_percentage < job.min_ug_percentage && (
                                   <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>UG percentage: Need {job.min_ug_percentage}%, have {studentProfile.ug_percentage}%</span></div>
                                 )}
-                                {job.min_tenth_percentage && studentProfile.tenth_percentage && studentProfile.tenth_percentage < job.min_tenth_percentage && (
+                                {job.min_tenth_percentage && studentProfile.tenth_percentage !== null && studentProfile.tenth_percentage !== undefined && studentProfile.tenth_percentage < job.min_tenth_percentage && (
                                   <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>10th percentage: Need {job.min_tenth_percentage}%, have {studentProfile.tenth_percentage}%</span></div>
                                 )}
-                                {job.min_twelfth_percentage && studentProfile.twelfth_percentage && studentProfile.twelfth_percentage < job.min_twelfth_percentage && (
+                                {job.min_twelfth_percentage && studentProfile.twelfth_percentage !== null && studentProfile.twelfth_percentage !== undefined && studentProfile.twelfth_percentage < job.min_twelfth_percentage && (
                                   <div className="flex items-start gap-2"><span className="text-red-500">•</span><span>12th percentage: Need {job.min_twelfth_percentage}%, have {studentProfile.twelfth_percentage}%</span></div>
                                 )}
                                 {job.eligible_courses && job.eligible_courses.length > 0 && studentProfile.course && !job.eligible_courses.includes(studentProfile.course) && (

@@ -129,14 +129,14 @@ export default function JobDetailsPage() {
     }
 
     // Check additional eligibility criteria
-    if (jobData.min_tenth_percentage && studentData.tenth_percentage && studentData.tenth_percentage < jobData.min_tenth_percentage) {
+    if (jobData.min_tenth_percentage && studentData.tenth_percentage !== null && studentData.tenth_percentage !== undefined && studentData.tenth_percentage < jobData.min_tenth_percentage) {
       eligible = false
       reasons.push(
         `10th percentage requirement not met (Required: ${jobData.min_tenth_percentage}%, You have: ${studentData.tenth_percentage}%)`,
       )
     }
 
-    if (jobData.min_twelfth_percentage && studentData.twelfth_percentage && studentData.twelfth_percentage < jobData.min_twelfth_percentage) {
+    if (jobData.min_twelfth_percentage && studentData.twelfth_percentage !== null && studentData.twelfth_percentage !== undefined && studentData.twelfth_percentage < jobData.min_twelfth_percentage) {
       eligible = false
       reasons.push(
         `12th percentage requirement not met (Required: ${jobData.min_twelfth_percentage}%, You have: ${studentData.twelfth_percentage}%)`,

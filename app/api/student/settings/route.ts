@@ -59,17 +59,73 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // If no settings found, return default settings
-    const defaultSettings = {
+    // Default settings - only the two settings needed
+    const defaultDbSettings = {
       newOpportunities: true,
-      applicationStatusUpdates: true,
+      placementCongratulations: true
+    }
+
+    const defaultFrontendSettings = {
+      newOpportunities: true,
       placementCongratulations: true,
-      deadlineReminders: true,
+    }
+
+    // If no settings found, create default settings for the user
+    if (!data || error?.code === 'PGRST116') {
+      // Get the student ID if we only have email
+      let currentStudentId = studentId
+      if (!currentStudentId && email) {
+        const { data: studentData } = await supabaseAdmin
+          .from('student_details')
+          .select('id')
+          .eq('college_email', email)
+          .single()
+        currentStudentId = studentData?.id
+      }
+
+      if (currentStudentId) {
+        // Create default settings in database
+        const { data: newSettings, error: createError } = await supabaseAdmin
+          .from('student_settings')
+          .upsert({
+            student_id: currentStudentId,
+            settings: defaultDbSettings,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'student_id'
+          })
+          .select()
+          .single()
+
+        if (!createError && newSettings) {
+          // Return the newly created settings in frontend format
+          return NextResponse.json({
+            success: true,
+            data: {
+              newOpportunities: newSettings.settings.newOpportunities,
+              placementCongratulations: newSettings.settings.placementCongratulations
+            }
+          })
+        }
+      }
+      
+      // If we can't create settings, return defaults
+      return NextResponse.json({
+        success: true,
+        data: defaultFrontendSettings
+      })
+    }
+
+    // Map existing database settings to frontend format
+    const frontendSettings = {
+      newOpportunities: data.settings.newOpportunities !== undefined ? data.settings.newOpportunities : true,
+      placementCongratulations: data.settings.placementCongratulations !== undefined ? data.settings.placementCongratulations : true,
     }
 
     return NextResponse.json({
       success: true,
-      data: data ? data.settings : defaultSettings
+      data: frontendSettings
     })
   } catch (err) {
     console.error('Settings API error:', err)
@@ -111,12 +167,18 @@ export async function POST(request: NextRequest) {
       studentId = studentData.id
     }
 
+    // Use simple settings structure - just store what frontend sends
+    const dbSettings = {
+      newOpportunities: settings.newOpportunities !== undefined ? settings.newOpportunities : true,
+      placementCongratulations: settings.placementCongratulations !== undefined ? settings.placementCongratulations : true
+    }
+
     // Upsert settings
     const { data, error } = await supabaseAdmin
       .from('student_settings')
       .upsert({
         student_id: studentId,
-        settings: settings,
+        settings: dbSettings,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'student_id'
@@ -134,7 +196,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: data.settings
+      data: {
+        newOpportunities: dbSettings.newOpportunities,
+        placementCongratulations: dbSettings.placementCongratulations
+      }
     })
   } catch (err) {
     console.error('Settings API error:', err)

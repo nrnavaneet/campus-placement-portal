@@ -192,11 +192,13 @@ export function Navbar() {
                 {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 p-0">
-                      <div className="w-full h-full bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white/20 rounded-lg">
-                        <span className="text-white font-semibold text-sm">
-                          {student?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                        </span>
+                    <Button variant="ghost" className="relative h-10 w-10 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <div className={`w-full h-full flex items-center justify-center shadow-lg border-2 rounded-lg ${
+                        theme === "dark" 
+                          ? "bg-gradient-to-br from-gray-700 to-gray-900 border-gray-600/20" 
+                          : "bg-gradient-to-br from-slate-700 to-slate-900 border-white/20"
+                      }`}>
+                        <User className="h-5 w-5 text-white" />
                       </div>
                     </Button>
                   </DropdownMenuTrigger>

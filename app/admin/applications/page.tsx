@@ -26,8 +26,10 @@ import {
   Edit,
   Eye,
   Search,
-  ArrowLeft
+  ArrowLeft,
+  Download
 } from "lucide-react"
+import { toast } from "sonner"
 import type { Job } from "@/lib/supabase"
 
 interface Application {
@@ -66,6 +68,7 @@ export default function AdminApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isRoundModalOpen, setIsRoundModalOpen] = useState(false)
   const [isAppModalOpen, setIsAppModalOpen] = useState(false)
+  const [isDownloadingData, setIsDownloadingData] = useState(false)
   const [selectedRound, setSelectedRound] = useState<ApplicationRound | null>(null)
   const [updateData, setUpdateData] = useState({
     status: "",
@@ -251,6 +254,176 @@ export default function AdminApplicationsPage() {
     }
   }
 
+  // Download student data with resumes as ZIP file for selected job/company
+  const downloadStudentDataWithResumes = async () => {
+    if (isDownloadingData) return // Prevent multiple simultaneous downloads
+    
+    try {
+      if (!selectedJob) {
+        toast.error("Please select a job to download data for", {
+          description: "Choose a job from the dropdown first",
+          duration: 4000,
+        })
+        return
+      }
+
+      const selectedJobData = jobs.find(job => job.id === selectedJob)
+      if (!selectedJobData) {
+        toast.error("Selected job not found")
+        return
+      }
+
+      setIsDownloadingData(true)
+
+      const loadingToast = toast.loading(`Preparing download for ${selectedJobData.company_name}...`, {
+        description: "This may take a few moments while we gather student data and resumes",
+      })
+      
+      const response = await fetch(`/api/admin/download-student-data?company=${encodeURIComponent(selectedJobData.company_name)}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        toast.dismiss(loadingToast)
+        toast.error(errorData.error || 'Failed to download student data')
+        return
+      }
+
+      // Get the blob from response
+      const blob = await response.blob()
+      
+      // Create download link
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = `student_data_${selectedJobData.company_name}_${new Date().toISOString().split('T')[0]}.zip`
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.dismiss(loadingToast)
+      toast.success("Download completed successfully!", {
+        description: `Student data and resumes for ${selectedJobData.company_name} downloaded`,
+        duration: 4000,
+      })
+      
+    } catch (error) {
+      console.error('Error downloading student data:', error)
+      toast.error((error as Error).message || 'Failed to download student data with resumes')
+    } finally {
+      setIsDownloadingData(false)
+    }
+  }
+
+  // Generate report CSV only
+  const generateCompanyReport = async () => {
+    try {
+      if (!selectedJob) {
+        toast.error("Please select a job to generate report for", {
+          description: "Choose a job from the dropdown first",
+          duration: 4000,
+        })
+        return
+      }
+
+      const selectedJobData = jobs.find(job => job.id === selectedJob)
+      if (!selectedJobData) {
+        toast.error("Selected job not found")
+        return
+      }
+
+      const response = await fetch(`/api/admin/company-report?company=${encodeURIComponent(selectedJobData.company_name)}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch company report')
+      }
+      const result = await response.json()
+      
+      // Export as CSV directly
+      const dataToExport = result.data || result || []
+      
+      const csvContent = [
+        [
+          "Company", 
+          "Job Title", 
+          "Student Name", 
+          "Registration No", 
+          "College Email",
+          "Personal Email",
+          "Mobile",
+          "Gender",
+          "Branch", 
+          "Course",
+          "UG Percentage",
+          "10th Percentage", 
+          "12th Percentage",
+          "Year of Graduation",
+          "Current Location",
+          "Active Backlogs",
+          "PWD Status",
+          "Application Status", 
+          "Package (₹L)",
+          "Applied Date",
+          "Current Stage"
+        ].join(","),
+        ...dataToExport.map((item: any) =>
+          [
+            `"${item.company_name}"`,
+            `"${item.job_title}"`,
+            `"${item.student_name}"`,
+            item.student_reg_no,
+            item.college_email || "",
+            item.personal_email || "",
+            item.mobile_number || "",
+            item.gender || "",
+            `"${item.branch}"`,
+            item.course || "",
+            item.ug_percentage || "",
+            item.tenth_percentage || "",
+            item.twelfth_percentage || "",
+            item.year_of_graduation || "",
+            item.current_location || "",
+            item.active_backlogs ? "Yes" : "No",
+            item.pwd ? "Yes" : "No",
+            item.status || "",
+            item.package ? `${(item.package / 100000).toFixed(1)}` : "N/A",
+            item.applied_at ? new Date(item.applied_at).toLocaleDateString('en-IN') : "",
+            item.current_stage || ""
+          ].join(",")
+        ),
+      ].join("\n")
+
+      const blob = new Blob([csvContent], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `company-report-${selectedJobData.company_name}-${new Date().toISOString().split("T")[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success("Company report generated successfully!", {
+        description: `Downloaded report for ${selectedJobData.company_name}`,
+        duration: 3000,
+      })
+    } catch (error) {
+      console.error('Error generating company report:', error)
+      toast.error('Failed to generate company report')
+    }
+  }
+
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.student_reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (app.student_name || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -336,13 +509,63 @@ export default function AdminApplicationsPage() {
                 </Select>
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button 
                   onClick={() => selectedJob && fetchApplications(selectedJob)}
                   disabled={isLoading}
                 >
                   Refresh
                 </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                      disabled={!selectedJob}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generate Report
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Download Options</DialogTitle>
+                      <DialogDescription>
+                        Choose what you want to download for the selected company
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <Button 
+                        onClick={() => {
+                          downloadStudentDataWithResumes()
+                        }}
+                        variant="default"
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        disabled={isDownloadingData || !selectedJob}
+                      >
+                        {isDownloadingData ? (
+                          <>
+                            <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Preparing...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Data & Resumes (ZIP)
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={generateCompanyReport}
+                        variant="outline"
+                        className="w-full"
+                        disabled={!selectedJob}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Download CSV Report Only
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </CardContent>

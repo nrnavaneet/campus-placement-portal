@@ -21,10 +21,8 @@ import {
   Moon,
   Sun,
   Download,
-  Trash2,
   AlertCircle,
   CheckCircle,
-  User,
   Lock,
 } from "lucide-react"
 
@@ -38,9 +36,7 @@ export default function SettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState("")
   const [settings, setSettings] = useState({
     newOpportunities: true,
-    applicationStatusUpdates: true,
     placementCongratulations: true,
-    deadlineReminders: true,
   })
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -167,24 +163,6 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.")
-
-    if (!confirmed) return
-
-    setIsLoading(true)
-    try {
-      // For demo purposes, just clear data and redirect
-      localStorage.clear()
-      await supabaseClient.auth.signOut()
-      router.push("/")
-    } catch (error) {
-      setError("Failed to delete account")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navbar />
@@ -215,10 +193,6 @@ export default function SettingsPage() {
                 <Button variant="ghost" className="w-full justify-start">
                   <Lock className="w-4 h-4 mr-2" />
                   Security
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <User className="w-4 h-4 mr-2" />
-                  Privacy
                 </Button>
                 <Button variant="ghost" className="w-full justify-start">
                   {theme === "light" ? <Moon className="w-4 h-4 mr-2" /> : <Sun className="w-4 h-4 mr-2" />}
@@ -253,34 +227,12 @@ export default function SettingsPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">Application Status Updates</Label>
-                    <p className="text-sm text-gray-500">Get notified when your application status changes (selected, shortlisted, etc.)</p>
-                  </div>
-                  <Switch
-                    checked={settings.applicationStatusUpdates}
-                    onCheckedChange={(checked) => handleSettingChange("applicationStatusUpdates", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
                     <Label className="text-base">Placement Congratulations</Label>
                     <p className="text-sm text-gray-500">Receive congratulatory messages when you get placed</p>
                   </div>
                   <Switch
                     checked={settings.placementCongratulations}
                     onCheckedChange={(checked) => handleSettingChange("placementCongratulations", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Deadline Reminders</Label>
-                    <p className="text-sm text-gray-500">Remind me about upcoming application deadlines</p>
-                  </div>
-                  <Switch
-                    checked={settings.deadlineReminders}
-                    onCheckedChange={(checked) => handleSettingChange("deadlineReminders", checked)}
                   />
                 </div>
               </CardContent>
@@ -375,43 +327,6 @@ export default function SettingsPage() {
                     checked={theme === "dark"}
                     onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
                   />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Data & Privacy */}
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Data & Privacy
-                </CardTitle>
-                <CardDescription>Manage your personal data and privacy settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-0.5">
-                      <Label className="text-base text-red-600">Danger Zone</Label>
-                      <p className="text-sm text-gray-500">Irreversible and destructive actions</p>
-                    </div>
-
-                    <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="text-red-800 dark:text-red-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Delete Account</p>
-                            <p className="text-sm">Permanently delete your account and all associated data</p>
-                          </div>
-                          <Button variant="destructive" size="sm" onClick={handleDeleteAccount} disabled={isLoading}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </Button>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  </div>
                 </div>
               </CardContent>
             </Card>
