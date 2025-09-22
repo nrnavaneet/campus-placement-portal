@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Footer } from "@/components/layout/footer"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -43,6 +44,8 @@ import {
   Trash2,
   Eye,
   Search,
+  SortAsc,
+  SortDesc,
   GraduationCap,
   Calendar,
   IndianRupee,
@@ -56,15 +59,16 @@ import {
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [currentTab, setCurrentTab] = useState("overview")
   const [students, setStudents] = useState<StudentDetails[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   const [companies, setCompanies] = useState<string[]>([])
   const [grievances, setGrievances] = useState<GrievanceReport[]>([])
   const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterBranch, setFilterBranch] = useState("all")
-  const [filterVerification, setFilterVerification] = useState("all")
-  const [filterJobStatus, setFilterJobStatus] = useState("all")
+  const [searchJobTerm, setSearchJobTerm] = useState("")
+  const [jobSortBy, setJobSortBy] = useState("created_at")
+  const [jobSortOrder, setJobSortOrder] = useState<"asc" | "desc">("desc")
   const [selectedJobForExport, setSelectedJobForExport] = useState("all")
   const [selectedCompanyForReport, setSelectedCompanyForReport] = useState("")
   const [isDownloadingData, setIsDownloadingData] = useState(false)
@@ -1220,18 +1224,50 @@ ${reportData.placedStudentDetails
       student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.college_reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.college_email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesBranch = filterBranch === "all" || student.branch === filterBranch
-    const matchesVerification = filterVerification === "all" || 
-      (filterVerification === "pending" && (!student.resume_url)) ||
-      (filterVerification === "verified" && (student.resume_url && student.college_email && student.personal_email)) ||
-      (filterVerification === "incomplete" && (!student.college_email || !student.personal_email || !student.first_name || !student.mobile_number))
-    return matchesSearch && matchesBranch && matchesVerification
+    return matchesSearch
   })
 
-  const filteredJobs = jobs.filter((job) => {
-    const matchesStatus = filterJobStatus === "all" || job.status === filterJobStatus
-    return matchesStatus
-  })
+  const filteredJobs = jobs
+    .filter((job) => {
+      const matchesSearch = searchJobTerm === "" || 
+        job.title.toLowerCase().includes(searchJobTerm.toLowerCase()) ||
+        job.company_name.toLowerCase().includes(searchJobTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchJobTerm.toLowerCase())
+      return matchesSearch
+    })
+    .sort((a, b) => {
+      let aValue, bValue
+      
+      switch (jobSortBy) {
+        case "title":
+          aValue = a.title.toLowerCase()
+          bValue = b.title.toLowerCase()
+          break
+        case "company_name":
+          aValue = a.company_name.toLowerCase()
+          bValue = b.company_name.toLowerCase()
+          break
+        case "package_min":
+          aValue = a.package_min || 0
+          bValue = b.package_min || 0
+          break
+        case "status":
+          aValue = a.status
+          bValue = b.status
+          break
+        case "created_at":
+        default:
+          aValue = new Date(a.created_at).getTime()
+          bValue = new Date(b.created_at).getTime()
+          break
+      }
+      
+      if (jobSortOrder === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
+      }
+    })
 
   const filteredGrievances = grievances
     .filter((grievance) => {
@@ -1305,22 +1341,36 @@ ${reportData.placedStudentDetails
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex justify-between items-center">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
               Admin Dashboard
             </h1>
-            <p className="text-gray-600 dark:text-gray-300">Manage placement activities and student applications</p>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage placement activities and student applications</p>
           </div>
           <Button 
-            onClick={() => fetchData()} 
+            onClick={async () => {
+              try {
+                await fetchData()
+                toast.success('Dashboard data refreshed successfully', {
+                  description: 'All data has been updated to the latest state',
+                  duration: 3000,
+                })
+              } catch (error) {
+                toast.error('Failed to refresh dashboard data', {
+                  description: 'Please try again or contact support if the problem persists',
+                  duration: 4000,
+                })
+              }
+            }} 
             variant="outline" 
-            className="ml-4 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950"
+            size="sm"
+            className="flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950 w-fit self-start sm:self-auto"
             disabled={isLoading}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Loading...' : 'Refresh Data'}
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="text-xs sm:text-sm">{isLoading ? 'Loading...' : 'Refresh'}</span>
           </Button>
         </div>
 
@@ -1357,82 +1407,99 @@ ${reportData.placedStudentDetails
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Students</CardTitle>
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.totalStudents}</div>
-              <p className="text-xs text-muted-foreground">Registered students</p>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.totalStudents}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Registered</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-              <Briefcase className="h-4 w-4 text-green-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Jobs</CardTitle>
+              <Briefcase className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.activeJobs}</div>
-              <p className="text-xs text-muted-foreground">Currently open positions</p>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.activeJobs}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Active</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg col-span-2 sm:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Applications</CardTitle>
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats.totalApplications}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Total</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-              <FileText className="h-4 w-4 text-purple-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Placed</CardTitle>
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{stats.totalApplications}</div>
-              <p className="text-xs text-muted-foreground">All time applications</p>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.placedStudents}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Success</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Placed Students</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Package</CardTitle>
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.placedStudents}</div>
-              <p className="text-xs text-muted-foreground">Successfully placed</p>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-yellow-600">₹{stats.averagePackage.toFixed(1)}L</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Average</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Package</CardTitle>
-              <TrendingUp className="h-4 w-4 text-yellow-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Issues</CardTitle>
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">₹{stats.averagePackage.toFixed(1)}L</div>
-              <p className="text-xs text-muted-foreground">Per annum</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Grievances</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.pendingGrievances}</div>
-              <p className="text-xs text-muted-foreground">Require attention</p>
+            <CardContent className="pt-0">
+              <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.pendingGrievances}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Pending</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="students">Students</TabsTrigger>
-            <TabsTrigger value="grievances">Grievances</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+        {/* Main Content Tabs - Mobile Friendly */}
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-4 sm:space-y-6">
+          {/* Mobile Tab Selector */}
+          <div className="sm:hidden">
+            <Select value={currentTab} onValueChange={setCurrentTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overview">Overview</SelectItem>
+                <SelectItem value="jobs">Jobs</SelectItem>
+                <SelectItem value="students">Students</SelectItem>
+                <SelectItem value="grievances">Issues</SelectItem>
+                <SelectItem value="reports">Reports</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop Tabs */}
+          <TabsList className="hidden sm:grid w-full grid-cols-5 gap-1 h-auto p-1">
+            <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="jobs" className="text-sm">Jobs</TabsTrigger>
+            <TabsTrigger value="students" className="text-sm">Students</TabsTrigger>
+            <TabsTrigger value="grievances" className="text-sm">Issues</TabsTrigger>
+            <TabsTrigger value="reports" className="text-sm">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -1480,10 +1547,10 @@ ${reportData.placedStudentDetails
                         Add New Job
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
                       <DialogHeader>
-                        <DialogTitle>Add New Job</DialogTitle>
-                        <DialogDescription>Create a new job posting for students</DialogDescription>
+                        <DialogTitle className="text-lg sm:text-xl">Add New Job</DialogTitle>
+                        <DialogDescription className="text-sm">Create a new job posting for students</DialogDescription>
                       </DialogHeader>
                       
                       {error && (
@@ -1500,67 +1567,72 @@ ${reportData.placedStudentDetails
                         </Alert>
                       )}
                       
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-4 sm:space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="title">Job Title *</Label>
+                            <Label htmlFor="title" className="text-sm font-medium">Job Title *</Label>
                             <Input
                               id="title"
                               value={newJob.title}
                               onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
                               placeholder="Software Developer"
+                              className="h-10"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="company">Company Name *</Label>
+                            <Label htmlFor="company" className="text-sm font-medium">Company Name *</Label>
                             <Input
                               id="company"
                               value={newJob.company_name}
                               onChange={(e) => setNewJob({ ...newJob, company_name: e.target.value })}
                               placeholder="TechCorp Solutions"
+                              className="h-10"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="description">Job Description *</Label>
+                          <Label htmlFor="description" className="text-sm font-medium">Job Description *</Label>
                           <Textarea
                             id="description"
                             value={newJob.description}
                             onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
                             placeholder="Describe the job role, responsibilities, and requirements..."
                             rows={4}
+                            className="resize-none"
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="packageMin">Package Min (₹)</Label>
+                            <Label htmlFor="packageMin" className="text-sm font-medium">Package Min (₹)</Label>
                             <Input
                               id="packageMin"
                               type="number"
                               value={newJob.package_min}
                               onChange={(e) => setNewJob({ ...newJob, package_min: e.target.value })}
                               placeholder="600000"
+                              className="h-10"
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="packageMax">Package Max (₹)</Label>
+                            <Label htmlFor="packageMax" className="text-sm font-medium">Package Max (₹)</Label>
                             <Input
                               id="packageMax"
                               type="number"
                               value={newJob.package_max}
                               onChange={(e) => setNewJob({ ...newJob, package_max: e.target.value })}
                               placeholder="1200000"
+                              className="h-10"
                               required
                             />
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="minPercentage">Min UG Percentage</Label>
+                            <Label htmlFor="minPercentage" className="text-sm font-medium">Min UG Percentage</Label>
                             <Input
                               id="minPercentage"
                               type="number"
@@ -1568,17 +1640,18 @@ ${reportData.placedStudentDetails
                               value={newJob.min_ug_percentage}
                               onChange={(e) => setNewJob({ ...newJob, min_ug_percentage: e.target.value })}
                               placeholder="70.0"
+                              className="h-10"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Backlogs Allowed?</Label>
+                            <Label className="text-sm font-medium">Backlogs Allowed?</Label>
                             <Select
                               value={newJob.no_backlogs_required ? "no" : "yes"}
                               onValueChange={(value) => 
                                 setNewJob({ ...newJob, no_backlogs_required: value === "no" })
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="h-10">
                                 <SelectValue placeholder="Select backlogs criteria" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1590,14 +1663,14 @@ ${reportData.placedStudentDetails
                         </div>
 
                         <div className="space-y-2">
-                          <Label>No Offer ?</Label>
+                          <Label className="text-sm font-medium">No Offer ?</Label>
                           <Select
                             value={newJob.no_offer ? "yes" : "no"}
                             onValueChange={(value) => 
                               setNewJob({ ...newJob, no_offer: value === "yes" })
                             }
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="h-10">
                               <SelectValue placeholder="Select offer criteria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1607,9 +1680,9 @@ ${reportData.placedStudentDetails
                           </Select>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="minTenthPercentage">Min 10th Percentage</Label>
+                            <Label htmlFor="minTenthPercentage" className="text-sm font-medium">Min 10th Percentage</Label>
                             <Input
                               id="minTenthPercentage"
                               type="number"
@@ -1617,10 +1690,11 @@ ${reportData.placedStudentDetails
                               value={newJob.min_tenth_percentage}
                               onChange={(e) => setNewJob({ ...newJob, min_tenth_percentage: e.target.value })}
                               placeholder="60.0"
+                              className="h-10"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="minTwelfthPercentage">Min 12th Percentage</Label>
+                            <Label htmlFor="minTwelfthPercentage" className="text-sm font-medium">Min 12th Percentage</Label>
                             <Input
                               id="minTwelfthPercentage"
                               type="number"
@@ -1628,14 +1702,15 @@ ${reportData.placedStudentDetails
                               value={newJob.min_twelfth_percentage}
                               onChange={(e) => setNewJob({ ...newJob, min_twelfth_percentage: e.target.value })}
                               placeholder="65.0"
+                              className="h-10"
                             />
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label>Eligible Courses</Label>
-                            <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                            <Label className="text-sm font-medium">Eligible Courses</Label>
+                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-3 border rounded-md bg-gray-50 dark:bg-gray-900">
                               {["B.Tech", "B.Sc", "M.Tech", "M.Sc", "MBA", "MCA"].map((course) => (
                                 <label key={course} className="flex items-center space-x-2">
                                   <input
@@ -1655,18 +1730,18 @@ ${reportData.placedStudentDetails
                                       }
                                     }}
                                   />
-                                  <span className="text-sm">{course}</span>
+                                  <span className="text-sm font-medium">{course}</span>
                                 </label>
                               ))}
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="yearOfGraduation">Year of Graduation</Label>
+                            <Label htmlFor="yearOfGraduation" className="text-sm font-medium">Year of Graduation</Label>
                             <Select
                               value={newJob.year_of_graduation}
                               onValueChange={(value) => setNewJob({ ...newJob, year_of_graduation: value })}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="h-10">
                                 <SelectValue placeholder="Select graduation year" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1683,16 +1758,16 @@ ${reportData.placedStudentDetails
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="status">Job Status</Label>
+                            <Label htmlFor="status" className="text-sm font-medium">Job Status</Label>
                             <Select
                               value={newJob.status}
                               onValueChange={(value: "upcoming" | "active" | "closed") => 
                                 setNewJob({ ...newJob, status: value })
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="h-10">
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1703,19 +1778,20 @@ ${reportData.placedStudentDetails
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="deadline">Application Deadline</Label>
+                            <Label htmlFor="deadline" className="text-sm font-medium">Application Deadline</Label>
                             <Input
                               id="deadline"
                               type="datetime-local"
                               value={newJob.application_deadline}
                               onChange={(e) => setNewJob({ ...newJob, application_deadline: e.target.value })}
+                              className="h-10"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Eligible Branches</Label>
-                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                          <Label className="text-sm font-medium">Eligible Branches</Label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-4 border rounded-md bg-gray-50 dark:bg-gray-900">
                             {branches.map((branch) => (
                               <label key={branch} className="flex items-center space-x-2">
                                 <input
@@ -1735,7 +1811,7 @@ ${reportData.placedStudentDetails
                                     }
                                   }}
                                 />
-                                <span className="text-sm">{branch}</span>
+                                <span className="text-sm font-medium">{branch}</span>
                               </label>
                             ))}
                           </div>
@@ -1751,11 +1827,20 @@ ${reportData.placedStudentDetails
                           />
                         </div>
 
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setIsAddJobOpen(false)}>
+                        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-2 pt-4 border-t">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsAddJobOpen(false)}
+                            className="w-full sm:w-auto"
+                          >
                             Cancel
                           </Button>
-                          <Button onClick={handleAddJob}>Add Job</Button>
+                          <Button 
+                            onClick={handleAddJob}
+                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                          >
+                            Add Job
+                          </Button>
                         </div>
                       </div>
                     </DialogContent>
@@ -1832,20 +1917,44 @@ ${reportData.placedStudentDetails
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-bold">Job Management</h2>
-              <div className="flex gap-4 items-center">
-                <Select value={filterJobStatus} onValueChange={setFilterJobStatus}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              {/* Search and Sort Controls */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-initial">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search jobs by title, company, or description..."
+                    value={searchJobTerm}
+                    onChange={(e) => setSearchJobTerm(e.target.value)}
+                    className="pl-10 w-full sm:w-80"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Select value={jobSortBy} onValueChange={setJobSortBy}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created_at">Date Created</SelectItem>
+                      <SelectItem value="title">Job Title</SelectItem>
+                      <SelectItem value="company_name">Company</SelectItem>
+                      <SelectItem value="package_min">Package</SelectItem>
+                      <SelectItem value="status">Status</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setJobSortOrder(jobSortOrder === "asc" ? "desc" : "asc")}
+                    className="shrink-0"
+                  >
+                    {jobSortOrder === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -2005,48 +2114,24 @@ ${reportData.placedStudentDetails
 
           <TabsContent value="students" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Student Management</h2>
+              <h2 className="text-xl sm:text-2xl font-bold">Student Management</h2>
               <Button variant="outline" onClick={exportStudentData}>
                 <Download className="w-4 h-4 mr-2" />
                 Export Data
               </Button>
             </div>
 
-            {/* Search and Filter */}
+            {/* Search Only - Simplified */}
             <div className="flex gap-4 items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Search students..."
+                  placeholder="Search students by name, registration number, or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Select value={filterBranch} onValueChange={setFilterBranch}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch} value={branch}>
-                      {branch}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterVerification} onValueChange={setFilterVerification}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending Verification</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="incomplete">Incomplete Profile</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Students Table */}
@@ -2339,9 +2424,9 @@ ${reportData.placedStudentDetails
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex gap-4 items-center">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
                     <Select value={selectedCompanyForReport} onValueChange={setSelectedCompanyForReport}>
-                      <SelectTrigger className="w-64">
+                      <SelectTrigger className="w-full sm:w-64">
                         <SelectValue placeholder="Select company" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2355,14 +2440,14 @@ ${reportData.placedStudentDetails
                     </Select>
                     <Button 
                       onClick={() => generateCompanyReport(selectedCompanyForReport)}
-                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 w-full sm:w-auto"
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Report
                     </Button>
                   </div>
                   
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
                     View detailed information about student applications and placements for specific companies or all companies.
                   </div>
                 </div>
@@ -3032,90 +3117,92 @@ ${reportData.placedStudentDetails
 
         {/* Company Report Dialog */}
         <Dialog open={isCompanyReportOpen} onOpenChange={setIsCompanyReportOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Company-wise Report</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="w-[98vw] sm:w-[95vw] max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-1 sm:mx-2 p-3 sm:p-6">
+            <DialogHeader className="pb-3 sm:pb-4">
+              <DialogTitle className="text-base sm:text-lg">Company-wise Report</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 {selectedCompanyForReport === "all" 
                   ? "All Companies Report" 
                   : `${selectedCompanyForReport} Report`}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600">
                   Total Records: {companyReportData?.length || 0}
                 </span>
               </div>
 
-              <div className="overflow-x-auto max-h-96">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-gray-50">
-                    <tr>
-                      <th className="p-2 text-left font-medium">Company</th>
-                      <th className="p-2 text-left font-medium">Job Title</th>
-                      <th className="p-2 text-left font-medium">Student</th>
-                      <th className="p-2 text-left font-medium">Reg No</th>
-                      <th className="p-2 text-left font-medium">Branch</th>
-                      <th className="p-2 text-left font-medium">Course</th>
-                      <th className="p-2 text-left font-medium">UG%</th>
-                      <th className="p-2 text-left font-medium">10th%</th>
-                      <th className="p-2 text-left font-medium">12th%</th>
-                      <th className="p-2 text-left font-medium">Grad Year</th>
-                      <th className="p-2 text-left font-medium">Status</th>
-                      <th className="p-2 text-left font-medium">Package</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(companyReportData || []).map((item, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium text-xs">{item.company_name}</td>
-                        <td className="p-2 text-xs">{item.job_title}</td>
-                        <td className="p-2 text-xs">{item.student_name}</td>
-                        <td className="p-2 font-mono text-xs">{item.student_reg_no}</td>
-                        <td className="p-2 text-xs">{item.branch}</td>
-                        <td className="p-2 text-xs">{item.course || 'N/A'}</td>
-                        <td className="p-2 text-xs">{item.ug_percentage || 'N/A'}</td>
-                        <td className="p-2 text-xs">{item.tenth_percentage || 'N/A'}</td>
-                        <td className="p-2 text-xs">{item.twelfth_percentage || 'N/A'}</td>
-                        <td className="p-2 text-xs">{item.year_of_graduation || 'N/A'}</td>
-                        <td className="p-2">
-                          <Badge 
-                            className={
-                              item.status === 'placed' 
-                                ? 'bg-green-100 text-green-800'
-                                : item.status === 'interview'
-                                ? 'bg-blue-100 text-blue-800'
-                                : item.status === 'rejected'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {item.status}
-                          </Badge>
-                        </td>
-                        <td className="p-2 font-mono text-xs">
-                          {item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A"}
-                        </td>
+              <div className="overflow-x-auto max-h-[50vh] sm:max-h-[60vh] -mx-3 sm:-mx-6 px-3 sm:px-6 border rounded-lg">
+                <div className="min-w-[900px]">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead className="border-b bg-gray-50 dark:bg-gray-800/50 sticky top-0">
+                      <tr>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Company</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Job Title</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Student</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Reg No</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Branch</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Course</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">UG%</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">10th%</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">12th%</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Grad Year</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Status</th>
+                        <th className="p-2 sm:p-3 text-left font-medium text-xs sm:text-sm">Package</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {(companyReportData || []).map((item, index) => (
+                        <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                          <td className="p-2 sm:p-3 font-medium text-xs">{item.company_name}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.job_title}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.student_name}</td>
+                          <td className="p-2 sm:p-3 font-mono text-xs">{item.student_reg_no}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.branch}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.course || 'N/A'}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.ug_percentage || 'N/A'}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.tenth_percentage || 'N/A'}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.twelfth_percentage || 'N/A'}</td>
+                          <td className="p-2 sm:p-3 text-xs">{item.year_of_graduation || 'N/A'}</td>
+                          <td className="p-2 sm:p-3">
+                            <Badge 
+                              className={`text-xs px-2 py-1 ${
+                                item.status === 'placed' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  : item.status === 'interview'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                  : item.status === 'rejected'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              {item.status}
+                            </Badge>
+                          </td>
+                          <td className="p-2 sm:p-3 font-mono text-xs">
+                            {item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {(!companyReportData || companyReportData.length === 0) && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-500 text-sm">
                   No data available for the selected company
                 </div>
               )}
 
-              <div className="flex justify-between">
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button 
                     onClick={() => downloadStudentDataWithResumes(selectedCompanyForReport)}
                     variant="default"
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm px-4 py-2"
                     disabled={isDownloadingData}
                   >
                     {isDownloadingData ? (
@@ -3126,20 +3213,25 @@ ${reportData.placedStudentDetails
                     ) : (
                       <>
                         <Download className="w-4 h-4 mr-2" />
-                        Download Data & Resumes
+                        <span className="hidden sm:inline">Download Data & Resumes</span>
+                        <span className="sm:hidden">Download All</span>
                       </>
                     )}
                   </Button>
                   <Button 
                     variant="outline" 
                     onClick={() => exportCompanyReport(selectedCompanyForReport)}
-                    size="default"
+                    className="w-full sm:w-auto text-sm px-4 py-2"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                   </Button>
                 </div>
-                <Button variant="outline" onClick={() => setIsCompanyReportOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsCompanyReportOpen(false)}
+                  className="w-full sm:w-auto text-sm px-4 py-2 mt-2 sm:mt-0"
+                >
                   Close
                 </Button>
               </div>
@@ -3147,6 +3239,8 @@ ${reportData.placedStudentDetails
           </DialogContent>
         </Dialog>
       </div>
+      
+      <Footer variant="admin" />
     </div>
   )
 }

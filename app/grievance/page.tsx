@@ -197,10 +197,10 @@ export default function GrievancePage() {
                 Back to Grievances
               </Button>
               <div className="text-center">
-                <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-center sm:text-left">
                   Submit New Grievance
                 </h1>
-                <p className="text-slate-600 dark:text-slate-300">
+                <p className="text-slate-600 dark:text-slate-300 text-center sm:text-left text-sm sm:text-base">
                   Have an issue or concern? Let us know and we'll help resolve it.
                 </p>
               </div>
@@ -218,7 +218,7 @@ export default function GrievancePage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="studentRegNo" className="text-slate-700 dark:text-slate-200">Registration Number *</Label>
                       <Input
@@ -245,7 +245,7 @@ export default function GrievancePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="issueType" className="text-slate-700 dark:text-slate-200">Issue Type *</Label>
                       <Select onValueChange={(value) => handleInputChange("issueType", value)} required>
@@ -338,22 +338,25 @@ export default function GrievancePage() {
       <Navbar />
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-center sm:text-left">
                 My Grievances
               </h1>
-              <p className="text-slate-600 dark:text-slate-300">
+              <p className="text-slate-600 dark:text-slate-300 text-center sm:text-left text-sm sm:text-base">
                 Track your submitted grievances and their resolution status
               </p>
             </div>
-            <Button 
-              onClick={() => setShowForm(true)} 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Submit New Grievance
-            </Button>
+            <div className="flex justify-center sm:justify-end">
+              <Button 
+                onClick={() => setShowForm(true)} 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Submit New Grievance</span>
+                <span className="sm:hidden">New Grievance</span>
+              </Button>
+            </div>
           </div>
 
           {loadingGrievances ? (
@@ -372,13 +375,13 @@ export default function GrievancePage() {
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardContent className="text-center py-12">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 text-slate-400 dark:text-slate-500" />
-                <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">No grievances submitted</h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-4">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">No grievances submitted</h3>
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mb-4">
                   You haven't submitted any grievances yet. If you have any issues or concerns, feel free to submit a new grievance.
                 </p>
                 <Button 
                   onClick={() => setShowForm(true)} 
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Submit Your First Grievance
@@ -389,30 +392,30 @@ export default function GrievancePage() {
             <div className="space-y-4">
               {grievances.map((grievance) => (
                 <Card key={grievance.id} className="hover:shadow-xl transition-all duration-200 border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-200">{grievance.issue_type}</h3>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                          <h3 className="font-semibold text-base sm:text-lg text-slate-800 dark:text-slate-200 truncate">{grievance.issue_type}</h3>
                           <Badge 
-                            className={`${statusColors[grievance.status as keyof typeof statusColors]} text-white border-0`}
+                            className={`${statusColors[grievance.status as keyof typeof statusColors]} text-white border-0 text-xs sm:text-sm self-start sm:self-center`}
                           >
                             {statusLabels[grievance.status as keyof typeof statusLabels] || grievance.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-3">
-                          <Clock className="w-4 h-4" />
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-3">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                           Submitted on {formatDate(grievance.created_at)}
                         </p>
-                        <p className="text-slate-700 dark:text-slate-300 mb-3 line-clamp-3">
+                        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 mb-3 line-clamp-2 sm:line-clamp-3">
                           {grievance.message}
                         </p>
                         {grievance.admin_response && (
                           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-3 mt-3">
-                            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                            <p className="text-xs sm:text-sm font-medium text-green-800 dark:text-green-200 mb-1">
                               Admin Response:
                             </p>
-                            <p className="text-sm text-green-700 dark:text-green-300">
+                            <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
                               {grievance.admin_response}
                             </p>
                           </div>

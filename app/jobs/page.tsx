@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { JobApplicationDialog } from "@/components/job-application-dialog"
 import { supabaseClient, type Job, type StudentDetails, type PlacementPolicy, downloadResume } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
@@ -27,6 +29,11 @@ import {
   Eye,
   FileText,
   Download,
+  Search,
+  SortAsc,
+  SortDesc,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 
 // Countdown component
@@ -94,9 +101,23 @@ export default function JobsPage() {
   const [isApplicationDialogOpen, setIsApplicationDialogOpen] = useState(false)
   const [selectedJobForApplication, setSelectedJobForApplication] = useState<Job | null>(null)
 
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState("deadline")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+
   const router = useRouter()
 
   const [applicationData, setApplicationData] = useState<any[]>([])
+
+  // Sort options
+  const sortOptions = [
+    { value: "deadline", label: "Application Deadline" },
+    { value: "company", label: "Company Name" },
+    { value: "salary", label: "Salary" },
+    { value: "posted", label: "Posted Date" },
+    { value: "title", label: "Job Title" },
+  ]
 
   useEffect(() => {
     if (!student) {
@@ -110,7 +131,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     filterJobs()
-  }, [jobs, activeTab, studentProfile, applicationData])
+  }, [jobs, activeTab, studentProfile, applicationData, searchTerm, sortBy, sortOrder])
 
   // Combined fetch function for better performance
   const fetchAllData = async () => {
@@ -167,7 +188,7 @@ export default function JobsPage() {
   const filterJobs = () => {
     if (!studentProfile) {
       // Show all jobs regardless of status
-      setFilteredJobs(jobs)
+      setFilteredJobs(applyFiltersAndSort(jobs))
       return
     }
 
@@ -199,7 +220,50 @@ export default function JobsPage() {
         filtered = jobs
     }
 
-    setFilteredJobs(filtered)
+    setFilteredJobs(applyFiltersAndSort(filtered))
+  }
+
+  const applyFiltersAndSort = (jobsList: Job[]): Job[] => {
+    let filtered = [...jobsList]
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(job =>
+        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0
+      
+      switch (sortBy) {
+        case "company":
+          comparison = a.company_name.localeCompare(b.company_name)
+          break
+        case "salary":
+          const avgA = (a.package_min + a.package_max) / 2
+          const avgB = (b.package_min + b.package_max) / 2
+          comparison = avgA - avgB
+          break
+        case "title":
+          comparison = a.title.localeCompare(b.title)
+          break
+        case "posted":
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          break
+        case "deadline":
+        default:
+          comparison = new Date(a.application_deadline).getTime() - new Date(b.application_deadline).getTime()
+          break
+      }
+      
+      return sortOrder === "desc" ? -comparison : comparison
+    })
+
+    return filtered
   }
 
   const isEligibleForJob = (job: Job, student: StudentDetails): boolean => {
@@ -298,14 +362,23 @@ export default function JobsPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            Available Jobs
+            <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 text-center sm:text-left">
+            Job Opportunities
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Discover and apply for placement opportunities
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 text-center sm:text-left">Find your perfect placement opportunity</p>
+            <Button
+              onClick={fetchAllData}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 w-fit self-center sm:self-auto"
+            >
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm">Refresh</span>
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -322,13 +395,85 @@ export default function JobsPage() {
           </Alert>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">All Jobs</TabsTrigger>
-            <TabsTrigger value="eligible">Eligible</TabsTrigger>
-            <TabsTrigger value="applied">Applied</TabsTrigger>
-            <TabsTrigger value="closed">Closed</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <div className="flex flex-col space-y-4">
+            {/* Search and Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search jobs, companies, or keywords..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 text-sm"
+                />
+              </div>
+              
+              {/* Quick Sort */}
+              {/* Sort By with integrated direction */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  className="px-2 sm:px-3"
+                  title={sortOrder === "asc" ? "Switch to descending" : "Switch to ascending"}
+                >
+                  {sortOrder === "asc" ? (
+                    <SortAsc className="w-4 h-4" />
+                  ) : (
+                    <SortDesc className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Tab List */}
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2 h-auto p-1 bg-gray-100/50 dark:bg-gray-800/50">
+              <TabsTrigger value="all" className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <span>All Jobs</span>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0 min-w-[18px] h-4 sm:h-5">
+                  {activeTab === "all" ? filteredJobs.length : jobs.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="eligible" className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <span>Eligible</span>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0 min-w-[18px] h-4 sm:h-5">
+                  {activeTab === "eligible" ? filteredJobs.length : jobs.filter(job => 
+                    (job.status === "active" || job.status === "upcoming") && 
+                    studentProfile && 
+                    isEligibleForJob(job, studentProfile) &&
+                    !applicationData.map(app => app.job_id).includes(job.id)
+                  ).length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="applied" className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <span>Applied</span>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0 min-w-[18px] h-4 sm:h-5">
+                  {activeTab === "applied" ? filteredJobs.length : applicationData.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="closed" className="text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <span>Closed</span>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0 min-w-[18px] h-4 sm:h-5">
+                  {activeTab === "closed" ? filteredJobs.length : jobs.filter(job => job.status === "closed").length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value={activeTab} className="mt-6">
             {loading ? (
@@ -365,7 +510,7 @@ export default function JobsPage() {
                 ))}
               </div>
             ) : filteredJobs.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredJobs.map((job) => {
                   // Find application data for this job if we're on the applied tab
                   const application = activeTab === "applied" ? applicationData.find(app => app.job_id === job.id) : null
@@ -375,17 +520,17 @@ export default function JobsPage() {
                       key={job.id}
                       className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group transform hover:-translate-y-1"
                     >
-                      <CardHeader className="pb-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                              <Building className="w-6 h-6 text-white" />
+                      <CardHeader className="pb-3 sm:pb-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Building className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                             </div>
-                            <div>
-                              <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-base sm:text-lg group-hover:text-blue-600 transition-colors truncate">
                                 {job.title}
                               </CardTitle>
-                              <CardDescription className="font-medium">
+                              <CardDescription className="font-medium text-sm sm:text-base truncate">
                                 {job.company_name}
                               </CardDescription>
                             </div>
@@ -393,7 +538,7 @@ export default function JobsPage() {
                           {/* Show application status badge for applied jobs, job status for others */}
                           {application ? (
                             <Badge
-                              className={
+                              className={`text-xs flex-shrink-0 ${
                                 application.current_stage === "applied"
                                   ? "bg-blue-100 text-blue-800"
                                   : application.current_stage === "under_review"
@@ -411,19 +556,35 @@ export default function JobsPage() {
                                   : application.current_stage === "offered"
                                   ? "bg-emerald-100 text-emerald-800"
                                   : application.current_stage === "placed"
-                                  ? "bg-green-200 text-green-900"
+                                  ? "bg-gradient-to-r from-green-200 to-emerald-200 text-green-900 border-2 border-green-300 font-bold shadow-lg"
                                   : application.current_stage === "rejected"
                                   ? "bg-red-100 text-red-800"
                                   : application.current_stage === "withdrawn"
                                   ? "bg-gray-100 text-gray-800"
                                   : "bg-gray-100 text-gray-800"
-                              }
+                              }`}
                             >
-                              {application.current_stage.charAt(0).toUpperCase() + application.current_stage.slice(1).replace('_', ' ')}
+                              <span className="hidden sm:inline">
+                                {application.current_stage.charAt(0).toUpperCase() + application.current_stage.slice(1).replace('_', ' ')}
+                              </span>
+                              <span className="sm:hidden">
+                                {application.current_stage === "under_review" ? "Review" : 
+                                 application.current_stage === "shortlisted" ? "Short" :
+                                 application.current_stage === "interview" ? "Inter" :
+                                 application.current_stage === "assessment" ? "Test" :
+                                 application.current_stage === "final_review" ? "Final" :
+                                 application.current_stage === "selected" ? "Select" :
+                                 application.current_stage === "offered" ? "Offer" :
+                                 application.current_stage === "placed" ? "Placed" :
+                                 application.current_stage === "rejected" ? "Reject" :
+                                 application.current_stage === "withdrawn" ? "Withdraw" :
+                                 application.current_stage.charAt(0).toUpperCase() + application.current_stage.slice(1)
+                                }
+                              </span>
                             </Badge>
                           ) : (
                             <Badge
-                              className={
+                              className={`text-xs flex-shrink-0 ${
                                 job.status === "active"
                                   ? "bg-green-100 text-green-800"
                                   : job.status === "upcoming"
@@ -431,7 +592,7 @@ export default function JobsPage() {
                                   : job.status === "closed"
                                   ? "bg-red-100 text-red-800"
                                   : "bg-gray-100 text-gray-800"
-                              }
+                              }`}
                             >
                               {job.status === "closed" && job.application_deadline && new Date(job.application_deadline) < new Date() 
                                 ? "Expired" 
@@ -529,6 +690,11 @@ export default function JobsPage() {
                                   <AlertCircle className="w-4 h-4 text-yellow-600" />
                                 ) : application.current_stage === "selected" || application.current_stage === "placed" || application.current_stage === "offered" ? (
                                   <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : application.current_stage === "placed" ? (
+                                  <div className="flex items-center">
+                                    <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                                    <span className="text-lg">🎉</span>
+                                  </div>
                                 ) : application.current_stage === "rejected" ? (
                                   <XCircle className="w-4 h-4 text-red-600" />
                                 ) : (
@@ -547,23 +713,30 @@ export default function JobsPage() {
                               {application.current_stage === "interview" && "Interview rounds in progress"}
                               {application.current_stage === "assessment" && "Technical/skill assessment in progress"}
                               {application.current_stage === "final_review" && "Final evaluation in progress"}
-                              {application.current_stage === "selected" && "🎉 Selected! Waiting for offer details"}
-                              {application.current_stage === "offered" && "🎉 Job offer received! Review and accept"}
-                              {application.current_stage === "placed" && "🌟 Congratulations! Successfully placed"}
+                              {application.current_stage === "selected" && "Selected! Waiting for offer details"}
+                              {application.current_stage === "offered" && "Job offer received! Review and accept"}
+                              {application.current_stage === "placed" && (
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 p-3 rounded-lg mt-2">
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-green-800 mb-1">Congratulations!</div>
+                                    <div className="text-sm text-green-700">You have been successfully placed!</div>
+                                  </div>
+                                </div>
+                              )}
                               {application.current_stage === "rejected" && "Application not selected this time"}
                               {application.current_stage === "withdrawn" && "Application was withdrawn"}
                             </div>
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4">
                           <div className="flex items-center space-x-1 text-sm text-green-600">
                             <IndianRupee className="w-4 h-4" />
-                            <span>{(job.package_min / 100000).toFixed(1)}L - {(job.package_max / 100000).toFixed(1)}L</span>
+                            <span className="truncate">{(job.package_min / 100000).toFixed(1)}L - {(job.package_max / 100000).toFixed(1)}L</span>
                           </div>
                           <div className="flex items-center space-x-1 text-sm text-gray-500">
                             <Calendar className="w-4 h-4" />
-                            <span>
+                            <span className="truncate">
                               {job.application_deadline 
                                 ? new Date(job.application_deadline).toLocaleDateString()
                                 : "No deadline"
@@ -572,24 +745,27 @@ export default function JobsPage() {
                           </div>
                           <div className="flex items-center space-x-1 text-sm text-blue-600">
                             <GraduationCap className="w-4 h-4" />
-                            <span>Min UG: {job.min_ug_percentage}%</span>
+                            <span className="truncate">UG: {job.min_ug_percentage}%</span>
                           </div>
-                          {job.min_tenth_percentage && (
+                          {job.min_tenth_percentage ? (
                             <div className="flex items-center space-x-1 text-sm text-purple-600">
                               <GraduationCap className="w-4 h-4" />
-                              <span>Min 10th: {job.min_tenth_percentage}%</span>
+                              <span className="truncate">10th: {job.min_tenth_percentage}%</span>
                             </div>
-                          )}
-                          {job.min_twelfth_percentage && (
+                          ) : job.min_twelfth_percentage ? (
                             <div className="flex items-center space-x-1 text-sm text-indigo-600">
                               <GraduationCap className="w-4 h-4" />
-                              <span>Min 12th: {job.min_twelfth_percentage}%</span>
+                              <span className="truncate">12th: {job.min_twelfth_percentage}%</span>
                             </div>
-                          )}
-                          {job.eligibility_criteria?.year_of_graduation && (
+                          ) : job.eligibility_criteria?.year_of_graduation ? (
                             <div className="flex items-center space-x-1 text-sm text-teal-600">
                               <Calendar className="w-4 h-4" />
-                              <span>Grad Year: {job.eligibility_criteria.year_of_graduation}</span>
+                              <span className="truncate">Grad: {job.eligibility_criteria.year_of_graduation}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-1 text-sm text-gray-400">
+                              <Users className="w-4 h-4" />
+                              <span className="truncate">Open</span>
                             </div>
                           )}
                         </div>

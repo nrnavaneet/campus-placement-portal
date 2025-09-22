@@ -189,14 +189,14 @@ export function Navbar() {
 
             {user ? (
               <>
-                {/* User menu */}
+                {/* User menu - Desktop only */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Button variant="ghost" className="relative h-10 w-10 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 hidden md:flex">
                       <div className={`w-full h-full flex items-center justify-center shadow-lg border-2 rounded-lg ${
                         theme === "dark" 
-                          ? "bg-gradient-to-br from-gray-700 to-gray-900 border-gray-600/20" 
-                          : "bg-gradient-to-br from-slate-700 to-slate-900 border-white/20"
+                          ? "bg-gradient-to-br from-blue-600 to-purple-700 border-blue-500/20" 
+                          : "bg-gradient-to-br from-blue-500 to-purple-600 border-white/20"
                       }`}>
                         <User className="h-5 w-5 text-white" />
                       </div>
@@ -251,14 +251,20 @@ export function Navbar() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Mobile menu button */}
+                {/* Enhanced Mobile menu button */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="md:hidden"
+                  className="md:hidden relative h-10 w-10 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
-                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  <div className={`transition-all duration-300 ${isMobileMenuOpen ? 'rotate-90' : ''}`}>
+                    {isMobileMenuOpen ? (
+                      <X className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                    ) : (
+                      <Menu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                    )}
+                  </div>
                 </Button>
               </>
             ) : (
@@ -277,25 +283,118 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Enhanced Mobile Navigation */}
         {user && isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map((item) => (
+          <div className="md:hidden border-t bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-lg">
+            {/* User Profile Section */}
+            <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
+                <div className={`w-12 h-12 flex items-center justify-center shadow-lg border-2 rounded-full ${
+                  theme === "dark" 
+                    ? "bg-gradient-to-br from-blue-600 to-purple-700 border-blue-500/30" 
+                    : "bg-gradient-to-br from-blue-500 to-purple-600 border-white/30"
+                }`}>
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {student ? (
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {student.first_name}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {student.college_email}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs px-2 py-0.5">
+                          {student.college_reg_no}
+                        </Badge>
+                        {profileCompletion < 100 && (
+                          <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                            {profileCompletion}% Complete
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {user.email}
+                      </p>
+                      <Badge variant="outline" className="text-xs w-fit mt-1">
+                        Profile Incomplete
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="px-4 py-3">
+              <div className="space-y-1">
+                {navItems.map((item, index) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 hover:scale-[0.98] ${
+                      isActive(item.href)
+                        ? "bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 shadow-md border border-blue-200 dark:border-blue-700/50"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      isActive(item.href)
+                        ? "bg-white/70 dark:bg-gray-800/70 shadow-sm"
+                        : "bg-gray-100 dark:bg-gray-700"
+                    }`}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Account Actions */}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+              <div className="space-y-1">
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    isActive(item.href)
-                      ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                      : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`}
+                  href="/profile"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-all duration-200 hover:scale-[0.98]"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                    <User className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <span>Profile</span>
                 </Link>
-              ))}
+                
+                <Link
+                  href="/settings"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-all duration-200 hover:scale-[0.98]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                    <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <span>Settings</span>
+                </Link>
+                
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false)
+                    handleSignOut()
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-all duration-200 hover:scale-[0.98]"
+                >
+                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                    <LogOut className="w-5 h-5" />
+                  </div>
+                  <span>Log out</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

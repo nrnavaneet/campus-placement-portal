@@ -307,14 +307,14 @@ export default function ProfilePage() {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 text-center sm:text-left">
             Student Profile
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your personal information and documents</p>
+          <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base text-center sm:text-left">Manage your personal information and documents</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           {/* Profile Completion Card */}
           <div className="lg:col-span-1">
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg mb-6">
@@ -324,15 +324,15 @@ export default function ProfilePage() {
                   Profile Strength
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 <div className="text-center">
-                  <div className={`text-3xl font-bold ${getCompletionColor(profileCompletion)}`}>
+                  <div className={`text-2xl sm:text-3xl font-bold ${getCompletionColor(profileCompletion)}`}>
                     {profileCompletion}%
                   </div>
-                  <p className="text-sm text-gray-500">{getCompletionStatus(profileCompletion)}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{getCompletionStatus(profileCompletion)}</p>
                 </div>
-                <Progress value={profileCompletion} className="h-3" />
-                <div className="space-y-2 text-sm">
+                <Progress value={profileCompletion} className="h-2 sm:h-3" />
+                <div className="space-y-2 text-xs sm:text-sm">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-4 h-4" />
                     <span>Basic Information</span>
@@ -368,10 +368,10 @@ export default function ProfilePage() {
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2 sm:space-y-3">
                 <Button
                   variant="outline"
-                  className="w-full justify-start bg-transparent"
+                  className="w-full justify-start bg-transparent text-sm"
                   onClick={() => setIsEditing(!isEditing)}
                 >
                   <User className="w-4 h-4 mr-2" />
@@ -379,26 +379,26 @@ export default function ProfilePage() {
                 </Button>
                 {student.resume_url && (
                   <>
-                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleViewResume} disabled={isLoading}>
+                    <Button variant="outline" className="w-full justify-start bg-transparent text-sm" onClick={handleViewResume} disabled={isLoading}>
                       <Eye className="w-4 h-4 mr-2" />
                       {isLoading ? "Loading..." : "View Resume"}
                     </Button>
-                    <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleDownloadResume} disabled={isLoading}>
+                    <Button variant="outline" className="w-full justify-start bg-transparent text-sm" onClick={handleDownloadResume} disabled={isLoading}>
                       <Download className="w-4 h-4 mr-2" />
                       {isLoading ? "Loading..." : "Download Resume"}
                     </Button>
                   </>
                 )}
                 {!student.resume_url && (
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 mx-auto mb-1" />
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">No Resume</p>
+                  <div className="p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mx-auto mb-1" />
+                    <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200 font-medium">No Resume</p>
                     <p className="text-xs text-yellow-600 dark:text-yellow-300">Upload resume first</p>
                   </div>
                 )}
                 <Button
                   variant="outline"
-                  className="w-full justify-start bg-transparent"
+                  className="w-full justify-start bg-transparent text-sm"
                   onClick={() => router.push("/jobs")}
                 >
                   <FileText className="w-4 h-4 mr-2" />
@@ -414,178 +414,63 @@ export default function ProfilePage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Your academic and personal details</CardDescription>
+                    <CardTitle className="text-xl sm:text-3xl">Personal Information</CardTitle>
+                    <CardDescription className="sm:text-base sm:text-lg">Your academic and personal details</CardDescription>
                   </div>
                   <Badge variant={profileCompletion >= 90 ? "default" : "secondary"}>{student.college_reg_no}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={student.first_name}
-                      onChange={(e) => handleInputChange("first_name", e.target.value)}
-                      disabled={!isEditing}
-                      className="transition-all duration-200"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <Select
-                      value={student.gender}
-                      onValueChange={(value) => handleInputChange("gender", value)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="regNo">Registration Number</Label>
-                    <Input
-                      id="regNo"
-                      value={student.college_reg_no}
-                      disabled
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth</Label>
-                    <Input
-                      id="dob"
-                      type="date"
-                      value={student.date_of_birth}
-                      onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="collegeEmail">College Email</Label>
-                    <Input
-                      id="collegeEmail"
-                      type="email"
-                      value={student.college_email}
-                      disabled
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="personalEmail">Personal Email</Label>
-                    <Input
-                      id="personalEmail"
-                      type="email"
-                      value={student.personal_email}
-                      onChange={(e) => handleInputChange("personal_email", e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number</Label>
-                    <Input
-                      id="mobile"
-                      value={student.mobile_number}
-                      onChange={(e) => handleInputChange("mobile_number", e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Branch</Label>
-                    <Select
-                      value={student.branch}
-                      onValueChange={(value) => handleInputChange("branch", value)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {branches.map((branch) => (
-                          <SelectItem key={branch} value={branch}>
-                            {branch}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="course">Course</Label>
-                    <Select
-                      value={student.course || ""}
-                      onValueChange={(value) => handleInputChange("course", value)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your course" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="B.Tech">B.Tech</SelectItem>
-                        <SelectItem value="B.Sc">B.Sc</SelectItem>
-                        <SelectItem value="M.Tech">M.Tech</SelectItem>
-                        <SelectItem value="M.Sc">M.Sc</SelectItem>
-                        <SelectItem value="MBA">MBA</SelectItem>
-                        <SelectItem value="MCA">MCA</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="tenth-percentage">10th Percentage</Label>
+                      <Label htmlFor="firstName">First Name</Label>
                       <Input
-                        id="tenth-percentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={student.tenth_percentage || ""}
-                        onChange={(e) => handleInputChange("tenth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                        id="firstName"
+                        value={student.first_name}
+                        onChange={(e) => handleInputChange("first_name", e.target.value)}
                         disabled={!isEditing}
-                        placeholder="85.5"
+                        className="transition-all duration-200"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="twelfth-percentage">12th Percentage</Label>
-                      <Input
-                        id="twelfth-percentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={student.twelfth_percentage || ""}
-                        onChange={(e) => handleInputChange("twelfth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                      <Label>Gender</Label>
+                      <Select
+                        value={student.gender}
+                        onValueChange={(value) => handleInputChange("gender", value)}
                         disabled={!isEditing}
-                        placeholder="88.2"
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="regNo">Registration Number</Label>
+                      <Input
+                        id="regNo"
+                        value={student.college_reg_no}
+                        disabled
+                        className="bg-gray-100 dark:bg-gray-700"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="percentage">UG Percentage</Label>
+                      <Label htmlFor="dob">Date of Birth</Label>
                       <Input
-                        id="percentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={student.ug_percentage}
-                        onChange={(e) => handleInputChange("ug_percentage", Number.parseFloat(e.target.value))}
+                        id="dob"
+                        type="date"
+                        value={student.date_of_birth}
+                        onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
                         disabled={!isEditing}
                       />
                     </div>
@@ -593,24 +478,78 @@ export default function ProfilePage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="graduation-year">Year of Graduation</Label>
+                      <Label htmlFor="collegeEmail">College Email</Label>
+                      <Input
+                        id="collegeEmail"
+                        type="email"
+                        value={student.college_email}
+                        disabled
+                        className="bg-gray-100 dark:bg-gray-700"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personalEmail">Personal Email</Label>
+                      <Input
+                        id="personalEmail"
+                        type="email"
+                        value={student.personal_email}
+                        onChange={(e) => handleInputChange("personal_email", e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile">Mobile Number</Label>
+                      <Input
+                        id="mobile"
+                        value={student.mobile_number}
+                        onChange={(e) => handleInputChange("mobile_number", e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Branch</Label>
                       <Select
-                        value={student.year_of_graduation?.toString() || ""}
-                        onValueChange={(value) => handleInputChange("year_of_graduation", value ? parseInt(value) : null)}
+                        value={student.branch}
+                        onValueChange={(value) => handleInputChange("branch", value)}
                         disabled={!isEditing}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select graduation year" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 5 }, (_, i) => {
-                            const year = new Date().getFullYear() + i
-                            return (
-                              <SelectItem key={year} value={year.toString()}>
-                                {year}
-                              </SelectItem>
-                            )
-                          })}
+                          {branches.map((branch) => (
+                            <SelectItem key={branch} value={branch}>
+                              {branch}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="course">Course</Label>
+                      <Select
+                        value={student.course || ""}
+                        onValueChange={(value) => handleInputChange("course", value)}
+                        disabled={!isEditing}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your course" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="B.Tech">B.Tech</SelectItem>
+                          <SelectItem value="B.Sc">B.Sc</SelectItem>
+                          <SelectItem value="M.Tech">M.Tech</SelectItem>
+                          <SelectItem value="M.Sc">M.Sc</SelectItem>
+                          <SelectItem value="MBA">MBA</SelectItem>
+                          <SelectItem value="MCA">MCA</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -625,6 +564,82 @@ export default function ProfilePage() {
                         placeholder="Bangalore, Karnataka"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm sm:text-base">Academic Percentages</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="tenth-percentage" className="text-sm">10th Percentage</Label>
+                          <Input
+                            id="tenth-percentage"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={student.tenth_percentage || ""}
+                            onChange={(e) => handleInputChange("tenth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                            disabled={!isEditing}
+                            placeholder="85.5"
+                            className="text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="twelfth-percentage" className="text-sm">12th Percentage</Label>
+                          <Input
+                            id="twelfth-percentage"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={student.twelfth_percentage || ""}
+                            onChange={(e) => handleInputChange("twelfth_percentage", e.target.value ? Number.parseFloat(e.target.value) : null)}
+                            disabled={!isEditing}
+                            placeholder="88.2"
+                            className="text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="percentage" className="text-sm">UG Percentage</Label>
+                          <Input
+                            id="percentage"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={student.ug_percentage}
+                            onChange={(e) => handleInputChange("ug_percentage", Number.parseFloat(e.target.value))}
+                            disabled={!isEditing}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="graduation-year">Year of Graduation</Label>
+                    <Select
+                      value={student.year_of_graduation?.toString() || ""}
+                      onValueChange={(value) => handleInputChange("year_of_graduation", value ? parseInt(value) : null)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select graduation year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 5 }, (_, i) => {
+                          const year = new Date().getFullYear() + i
+                          return (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-3">
@@ -722,24 +737,24 @@ export default function ProfilePage() {
                   )}
 
                   {student.resume_url && !isEditing && (
-                    <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg gap-3">
                       <div className="flex items-center gap-3">
-                        <FileText className="w-8 h-8 text-green-600" />
+                        <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
                         <div>
-                          <p className="font-medium text-green-800 dark:text-green-200">Resume Uploaded</p>
-                          <p className="text-sm text-green-600 dark:text-green-300">
+                          <p className="font-medium text-green-800 dark:text-green-200 text-sm sm:text-base">Resume Uploaded</p>
+                          <p className="text-xs sm:text-sm text-green-600 dark:text-green-300">
                             {student.college_reg_no}_Resume.pdf
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={handleViewResume} disabled={isLoading}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          {isLoading ? "Loading..." : "View"}
+                        <Button variant="outline" size="sm" onClick={handleViewResume} disabled={isLoading} className="px-3 py-1.5 text-xs font-medium">
+                          <Eye className="w-3 h-3 mr-1.5" />
+                          {isLoading ? "..." : "View"}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleDownloadResume} disabled={isLoading}>
-                          <Download className="w-4 h-4 mr-2" />
-                          {isLoading ? "Loading..." : "Download"}
+                        <Button variant="outline" size="sm" onClick={handleDownloadResume} disabled={isLoading} className="px-3 py-1.5 text-xs font-medium">
+                          <Download className="w-3 h-3 mr-1.5" />
+                          {isLoading ? "..." : "Download"}
                         </Button>
                       </div>
                     </div>
@@ -773,7 +788,7 @@ export default function ProfilePage() {
                 )}
 
                 {isEditing && (
-                  <div className="flex justify-end space-x-4 pt-6 border-t">
+                  <div className="flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -782,13 +797,14 @@ export default function ProfilePage() {
                         setError("")
                         fetchStudentData()
                       }}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleSave}
                       disabled={isLoading}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {isLoading ? "Saving..." : "Save Changes"}

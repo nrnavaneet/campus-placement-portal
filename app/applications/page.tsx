@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { useAuth } from "@/contexts/auth-context"
 import type { ApplicationStatus, StudentDetails } from "@/lib/supabase"
 import { Clock, CheckCircle, XCircle, Calendar, Building, FileText, AlertCircle, Users, Briefcase, IndianRupee } from "lucide-react"
 
@@ -31,8 +32,8 @@ interface ApplicationRound {
 }
 
 export default function ApplicationsPage() {
+  const { student, isLoading: authLoading } = useAuth()
   const [applications, setApplications] = useState<ApplicationWithDetails[]>([])
-  const [student, setStudent] = useState<StudentDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     total: 0,
@@ -44,23 +45,23 @@ export default function ApplicationsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (!authLoading && student) {
+      fetchData()
+    } else if (!authLoading && !student) {
+      router.push('/')
+    }
+  }, [authLoading, student])
 
   const fetchData = async () => {
     try {
-      // Get student profile
-      const storedProfile = localStorage.getItem("student_profile")
-      if (!storedProfile) {
+      // Check if student is authenticated via auth context
+      if (!student) {
         router.push('/profile')
         return
       }
-      
-      const studentData = JSON.parse(storedProfile)
-      setStudent(studentData)
 
       // Fetch real application data from API
-      const response = await fetch(`/api/student/applications?student_id=${studentData.college_reg_no}`)
+      const response = await fetch(`/api/student/applications?student_id=${student.college_reg_no}`)
       let applicationsData = []
       
       if (response.ok) {
@@ -104,7 +105,7 @@ export default function ApplicationsPage() {
 
           // Fetch round data for this application
           try {
-            const roundsResponse = await fetch(`/api/student/application-rounds?student_id=${studentData.college_reg_no}&application_id=${app.id}`)
+            const roundsResponse = await fetch(`/api/student/application-rounds?student_id=${student.college_reg_no}&application_id=${app.id}`)
             if (roundsResponse.ok) {
               const roundsData = await roundsResponse.json()
               const appRounds = roundsData.applications?.[app.id]?.rounds || []
@@ -127,14 +128,30 @@ export default function ApplicationsPage() {
 
       setApplications(applicationsWithDetails)
 
-      // Calculate stats from real data
+      // Calculate stats from real data - improved mapping
       const stats = {
         total: applicationsWithDetails.length,
-        pending: applicationsWithDetails.filter(app => ['applied', 'under_review'].includes(app.current_stage)).length,
-        interviews: applicationsWithDetails.filter(app => app.current_stage === 'interview').length,
-        selected: applicationsWithDetails.filter(app => app.current_stage === 'selected').length,
-        rejected: applicationsWithDetails.filter(app => app.current_stage === 'rejected').length,
+        pending: applicationsWithDetails.filter(app => 
+          ['applied', 'under_review', 'shortlisted'].includes(app.current_stage)
+        ).length,
+        interviews: applicationsWithDetails.filter(app => 
+          ['interview', 'interview_scheduled', 'scheduled'].includes(app.current_stage) || 
+          (app.current_round && ['scheduled', 'in_progress'].includes(app.current_round.status))
+        ).length,
+        selected: applicationsWithDetails.filter(app => 
+          ['selected', 'placed', 'offered'].includes(app.current_stage)
+        ).length,
+        rejected: applicationsWithDetails.filter(app => 
+          ['rejected', 'withdrawn'].includes(app.current_stage)
+        ).length,
       }
+      
+      console.log('Application stats calculated:', stats)
+      console.log('Sample applications:', applicationsWithDetails.slice(0, 3).map(app => ({
+        stage: app.current_stage,
+        round: app.current_round?.status
+      })))
+      
       setStats(stats)
 
     } catch (error) {
@@ -275,56 +292,58 @@ export default function ApplicationsPage() {
 
     return (
       <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Building className="w-6 h-6 text-white" />
+        <CardHeader className="pb-4 sm:pb-6">
+          {/* Mobile: Stacked layout, Desktop: Side-by-side */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 flex-1">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Building className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <CardTitle className="text-lg">{application.job_title}</CardTitle>
-                <CardDescription className="font-medium">{application.company_name}</CardDescription>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base sm:text-lg truncate">{application.job_title}</CardTitle>
+                <CardDescription className="font-medium text-sm sm:text-base truncate">{application.company_name}</CardDescription>
                 {application.package_range && (
-                  <div className="flex items-center gap-1">
-                    <IndianRupee className="w-4 h-4 text-green-600" />
-                    <p className="text-sm text-green-600 font-medium">{application.package_range}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <IndianRupee className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                    <p className="text-xs sm:text-sm text-green-600 font-medium">{application.package_range}</p>
                   </div>
                 )}
               </div>
             </div>
-            <Badge className={getStageColor(application.current_stage)}>
+            <Badge className={`${getStageColor(application.current_stage)} flex-shrink-0 text-xs px-2 py-1 ml-auto sm:text-sm sm:px-3 sm:py-1.5`}>
               <div className="flex items-center gap-1">
                 {getStageIcon(application.current_stage)}
-                {getStageLabel(application.current_stage)}
+                <span className="hidden sm:inline">{getStageLabel(application.current_stage)}</span>
+                <span className="sm:hidden text-xs">{getStageLabel(application.current_stage).split(' ')[0]}</span>
               </div>
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 pt-0">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-xs sm:text-sm">
               <span>Application Progress</span>
               <span className="font-medium">{Math.round(progress)}%</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-1.5 sm:h-2" />
           </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm">Timeline</h4>
-            <div className="space-y-2">
+          <div className="space-y-2 sm:space-y-3">
+            <h4 className="font-medium text-xs sm:text-sm">Timeline</h4>
+            <div className="space-y-1.5 sm:space-y-2">
               {application.stage_history.slice(-3).map((stage, index) => (
-                <div key={index} className="flex items-start gap-3 text-sm">
+                <div key={index} className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm">
                   <div
-                    className={`w-2 h-2 rounded-full mt-2 ${
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-1.5 sm:mt-2 flex-shrink-0 ${
                       index === application.stage_history.slice(-3).length - 1 ? "bg-blue-600" : "bg-gray-300"
                     }`}
                   />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{getStageLabel(stage.stage)}</span>
-                      <span className="text-xs text-gray-500">{formatDate(stage.timestamp)}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium truncate">{getStageLabel(stage.stage)}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">{formatDate(stage.timestamp)}</span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 text-xs mt-1">{stage.description}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-xs mt-1 leading-relaxed">{stage.description}</p>
                   </div>
                 </div>
               ))}
@@ -333,38 +352,43 @@ export default function ApplicationsPage() {
 
           {/* Current Round Status */}
           {application.current_round && (
-            <div className="space-y-3 border-t pt-4">
-              <h4 className="font-medium text-sm">Current Round</h4>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-3">
-                  {getRoundStatusIcon(application.current_round.status)}
-                  <div>
-                    <p className="font-medium text-sm">
-                      Round {application.current_round.round_number}: {application.current_round.round_name}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-                      {application.current_round.round_type}
-                    </p>
-                    {application.current_round.scheduled_at && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        Scheduled: {new Date(application.current_round.scheduled_at).toLocaleString()}
+            <div className="space-y-2 sm:space-y-3 border-t pt-3 sm:pt-4">
+              <h4 className="font-medium text-xs sm:text-sm">Current Round</h4>
+              <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 mt-0.5 sm:mt-0">
+                      {getRoundStatusIcon(application.current_round.status)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-xs sm:text-sm truncate">
+                        Round {application.current_round.round_number}: {application.current_round.round_name}
                       </p>
-                    )}
-                    {application.current_round.score && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Score: {application.current_round.score}/100
+                      <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+                        {application.current_round.round_type}
                       </p>
-                    )}
+                      {application.current_round.scheduled_at && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Scheduled: {new Date(application.current_round.scheduled_at).toLocaleString()}
+                        </p>
+                      )}
+                      {application.current_round.score && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Score: {application.current_round.score}/100
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  <Badge className={`${getRoundStatusColor(application.current_round.status)} text-xs flex-shrink-0`}>
+                    <span className="hidden sm:inline">{application.current_round.status.replace('_', ' ')}</span>
+                    <span className="sm:hidden">{application.current_round.status.split('_')[0]}</span>
+                  </Badge>
                 </div>
-                <Badge className={getRoundStatusColor(application.current_round.status)}>
-                  {application.current_round.status.replace('_', ' ')}
-                </Badge>
               </div>
               {application.current_round.feedback && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Feedback</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">{application.current_round.feedback}</p>
+                <div className="p-2.5 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-xs sm:text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Feedback</p>
+                  <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 leading-relaxed">{application.current_round.feedback}</p>
                 </div>
               )}
             </div>
@@ -372,13 +396,13 @@ export default function ApplicationsPage() {
 
           {/* Round Progress Overview */}
           {application.rounds && application.rounds.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Round Progress</h4>
+            <div className="space-y-2 sm:space-y-3">
+              <h4 className="font-medium text-xs sm:text-sm">Round Progress</h4>
               <div className="flex gap-1">
                 {application.rounds.map((round, index) => (
                   <div
                     key={round.id}
-                    className={`flex-1 h-2 rounded-full ${
+                    className={`flex-1 h-1.5 sm:h-2 rounded-full ${
                       round.status === 'passed' 
                         ? 'bg-green-500' 
                         : round.status === 'failed' 
@@ -398,9 +422,14 @@ export default function ApplicationsPage() {
             </div>
           )}
 
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="text-sm text-gray-500">Applied: {formatDate(application.applied_at)}</div>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/jobs/${application.job_id}`)}>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-3 sm:pt-4 border-t gap-2">
+            <div className="text-xs sm:text-sm text-gray-500">Applied: {formatDate(application.applied_at)}</div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => router.push(`/jobs/${application.job_id}`)}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+            >
               View Details
             </Button>
           </div>
@@ -409,42 +438,42 @@ export default function ApplicationsPage() {
     )
   }
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <div className="h-8 bg-gray-300 rounded w-48 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-300 rounded w-64 animate-pulse"></div>
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+          <div className="mb-6 sm:mb-8">
+            <div className="h-6 sm:h-8 bg-gray-300 rounded w-40 sm:w-48 mb-2 animate-pulse"></div>
+            <div className="h-3 sm:h-4 bg-gray-300 rounded w-48 sm:w-64 animate-pulse"></div>
           </div>
           
           {/* Stats cards loading */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-white/80 dark:bg-gray-800/80 p-6 rounded-lg shadow animate-pulse">
-                <div className="h-4 bg-gray-300 rounded w-16 mb-2"></div>
-                <div className="h-8 bg-gray-300 rounded w-8 mb-1"></div>
-                <div className="h-3 bg-gray-300 rounded w-12"></div>
+              <div key={i} className="bg-white/80 dark:bg-gray-800/80 p-3 sm:p-6 rounded-lg shadow animate-pulse">
+                <div className="h-3 sm:h-4 bg-gray-300 rounded w-12 sm:w-16 mb-2"></div>
+                <div className="h-6 sm:h-8 bg-gray-300 rounded w-6 sm:w-8 mb-1"></div>
+                <div className="h-2 sm:h-3 bg-gray-300 rounded w-8 sm:w-12 sm:hidden"></div>
               </div>
             ))}
           </div>
           
           {/* Application cards loading */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white/80 dark:bg-gray-800/80 rounded-lg shadow p-6 animate-pulse">
+              <div key={i} className="bg-white/80 dark:bg-gray-800/80 rounded-lg shadow p-4 sm:p-6 animate-pulse">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-300 rounded-lg"></div>
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-300 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-300 rounded w-24"></div>
+                    <div className="h-3 sm:h-4 bg-gray-300 rounded w-24 sm:w-32 mb-2"></div>
+                    <div className="h-2 sm:h-3 bg-gray-300 rounded w-16 sm:w-24"></div>
                   </div>
-                  <div className="h-6 bg-gray-300 rounded-full w-16"></div>
+                  <div className="h-4 sm:h-6 bg-gray-300 rounded-full w-12 sm:w-16"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="h-3 bg-gray-300 rounded w-full"></div>
-                  <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                  <div className="h-2 sm:h-3 bg-gray-300 rounded w-full"></div>
+                  <div className="h-2 sm:h-3 bg-gray-300 rounded w-3/4"></div>
                 </div>
               </div>
             ))}
@@ -458,96 +487,101 @@ export default function ApplicationsPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 text-center sm:text-left">
             Track Applications
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">Monitor the status of your job applications</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 text-center sm:text-left">Monitor the status of your job applications</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-blue-600" />
-                Total
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                <span className="truncate">Total</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+            <CardContent className="pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.total}</div>
+              <div className="text-xs text-gray-500 mt-1 sm:hidden">Applications</div>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4 text-yellow-600" />
-                Pending
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                <span className="truncate">Review</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <CardContent className="pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pending}</div>
+              <div className="text-xs text-gray-500 mt-1 sm:hidden">Pending</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg col-span-2 sm:col-span-1">
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-orange-600" />
+                <span className="truncate">Scheduled</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">{stats.interviews}</div>
+              <div className="text-xs text-gray-500 mt-1 sm:hidden">Interviews</div>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-orange-600" />
-                Interviews
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                <span className="truncate">Success</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.interviews}</div>
+            <CardContent className="pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.selected}</div>
+              <div className="text-xs text-gray-500 mt-1 sm:hidden">Selected</div>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Selected
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                <XCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
+                <span className="truncate">Rejected</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.selected}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-600" />
-                Rejected
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+            <CardContent className="pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.rejected}</div>
+              <div className="text-xs text-gray-500 mt-1 sm:hidden">Closed</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Applications List */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {applications.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
               {applications.map((application) => (
                 <ApplicationCard key={application.id} application={application} />
               ))}
             </div>
           ) : (
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="text-center py-12">
-                <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Applications Yet</h3>
-                <p className="text-gray-500 mb-4">
+              <CardContent className="text-center py-8 sm:py-12">
+                <Briefcase className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Applications Yet</h3>
+                <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
                   You haven't applied to any jobs yet. Start exploring opportunities!
                 </p>
                 <Button
                   onClick={() => router.push("/jobs")}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 w-full sm:w-auto"
                 >
                   Browse Jobs
                 </Button>

@@ -306,186 +306,106 @@ export default function JobDetailsPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Job Header */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Job Header - Simplified */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <div className="flex items-start justify-between">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Building className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl">{job.title}</CardTitle>
-                      <CardDescription className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                      <CardTitle className="text-xl sm:text-2xl mb-1">{job.title}</CardTitle>
+                      <CardDescription className="text-lg font-medium text-blue-600 dark:text-blue-400">
                         {job.company_name}
                       </CardDescription>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>Bangalore, India</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Briefcase className="w-4 h-4" />
-                          <span>{job.counts_as_offer ? "Full-time" : "Internship"}</span>
-                        </div>
+                      <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                        <Briefcase className="w-4 h-4" />
+                        <span>{job.counts_as_offer ? "Full-time Position" : "Internship"}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge
-                      className={
-                        job.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : job.status === "upcoming"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                      }
-                    >
-                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                    </Badge>
-                    {student &&
-                      (eligibilityCheck.eligible ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Eligible
+                  <div className="flex flex-col sm:items-end gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge
+                        className={
+                          job.status === "active"
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : job.status === "upcoming"
+                            ? "bg-blue-100 text-blue-800 border-blue-200"
+                            : "bg-gray-100 text-gray-800 border-gray-200"
+                        }
+                      >
+                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                      </Badge>
+                      {student && (
+                        <Badge 
+                          className={
+                            eligibilityCheck.eligible 
+                              ? "bg-green-100 text-green-800 border-green-200" 
+                              : "bg-red-100 text-red-800 border-red-200"
+                          }
+                        >
+                          {eligibilityCheck.eligible ? (
+                            <>
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Eligible
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Not Eligible
+                            </>
+                          )}
                         </Badge>
-                      ) : (
-                        <Badge className="bg-red-100 text-red-800">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Not Eligible
-                        </Badge>
-                      ))}
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Package</p>
-                      <p className="font-medium">{formatSalary(job.package_min, job.package_max)}</p>
+              <CardContent className="pt-0">
+                {/* Key Stats in a cleaner grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2 mx-auto">
+                      <IndianRupee className="w-5 h-5 text-green-600" />
                     </div>
+                    <p className="text-xs text-gray-500 mb-1">Package</p>
+                    <p className="font-semibold text-sm">{formatSalary(job.package_min, job.package_max)}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Min UG %</p>
-                      <p className="font-medium">{job.min_ug_percentage}%</p>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2 mx-auto">
+                      <GraduationCap className="w-5 h-5 text-blue-600" />
                     </div>
+                    <p className="text-xs text-gray-500 mb-1">Min UG %</p>
+                    <p className="font-semibold text-sm">{job.min_ug_percentage}%</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Eligible Branches</p>
-                      <p className="font-medium">{job.branches_allowed.length}</p>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-2 mx-auto">
+                      <Users className="w-5 h-5 text-purple-600" />
                     </div>
+                    <p className="text-xs text-gray-500 mb-1">Branches</p>
+                    <p className="font-semibold text-sm">{job.branches_allowed.length}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-orange-600" />
-                    <div>
-                      <p className="text-sm text-gray-500">Deadline</p>
-                      <p className={`font-medium ${isExpired ? "text-red-600" : ""}`}>
-                        {getTimeRemaining(job.application_deadline)}
-                      </p>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg mb-2 mx-auto">
+                      <Clock className="w-5 h-5 text-orange-600" />
                     </div>
+                    <p className="text-xs text-gray-500 mb-1">Deadline</p>
+                    <p className={`font-semibold text-sm ${isExpired ? "text-red-600" : ""}`}>
+                      {getTimeRemaining(job.application_deadline)}
+                    </p>
                   </div>
                 </div>
-
-                {/* Eligibility Issues - Show when not eligible */}
-                {student && !eligibilityCheck.eligible && eligibilityCheck.reasons.length > 0 && (
-                  <div className="border-t pt-4 mb-4">
-                    <h3 className="text-sm font-medium text-red-700 dark:text-red-300 mb-3 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      Why You're Not Eligible
-                    </h3>
-                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-                      <ul className="space-y-2">
-                        {eligibilityCheck.reasons.map((reason, index) => (
-                          <li key={index} className="text-sm text-red-800 dark:text-red-200 flex items-start gap-2">
-                            <span className="text-red-500 mt-1">•</span>
-                            <span>{reason}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {/* Additional Eligibility Criteria */}
-                {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation || job.no_backlogs_required || job.no_offer) && (
-                  <div className="border-t pt-4">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Additional Eligibility Requirements</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {job.min_tenth_percentage && (
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="w-5 h-5 text-indigo-600" />
-                          <div>
-                            <p className="text-sm text-gray-500">Min 10th %</p>
-                            <p className="font-medium">{job.min_tenth_percentage}%</p>
-                          </div>
-                        </div>
-                      )}
-                      {job.min_twelfth_percentage && (
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="w-5 h-5 text-purple-600" />
-                          <div>
-                            <p className="text-sm text-gray-500">Min 12th %</p>
-                            <p className="font-medium">{job.min_twelfth_percentage}%</p>
-                          </div>
-                        </div>
-                      )}
-                      {job.eligibility_criteria?.year_of_graduation && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-5 h-5 text-teal-600" />
-                          <div>
-                            <p className="text-sm text-gray-500">Grad Year</p>
-                            <p className="font-medium">{job.eligibility_criteria.year_of_graduation}</p>
-                          </div>
-                        </div>
-                      )}
-                      {job.no_backlogs_required && (
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="w-5 h-5 text-red-600" />
-                          <div>
-                            <p className="text-sm text-gray-500">Backlogs</p>
-                            <p className="font-medium text-red-600">Not Allowed</p>
-                          </div>
-                        </div>
-                      )}
-                      {job.no_offer && (
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="w-5 h-5 text-orange-600" />
-                          <div>
-                            <p className="text-sm text-gray-500">No Offer?</p>
-                            <p className="font-medium text-orange-600">Yes</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {job.eligible_courses && job.eligible_courses.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Courses:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {job.eligible_courses.map((course: string) => (
-                            <Badge key={course} variant="outline" className="bg-blue-50 text-blue-700">
-                              {course}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Application Action */}
+            {/* Application Status/Action - Moved up and simplified */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="pt-6">
+              <CardContent className="p-6">
                 {hasApplied ? (
                   <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                     <div className="flex items-center gap-3">
@@ -493,7 +413,7 @@ export default function JobDetailsPage() {
                       <div>
                         <p className="font-medium text-green-800 dark:text-green-200">Application Submitted</p>
                         <p className="text-sm text-green-600 dark:text-green-300">
-                          You have already applied for this position.
+                          You have successfully applied for this position.
                         </p>
                       </div>
                     </div>
@@ -506,9 +426,9 @@ export default function JobDetailsPage() {
                     </Button>
                   </div>
                 ) : !student ? (
-                  <div className="text-center p-6">
-                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Please complete your profile to apply</p>
+                  <div className="text-center p-4">
+                    <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 dark:text-gray-400 mb-3">Complete your profile to apply</p>
                     <Button onClick={() => router.push('/profile')}>
                       Complete Profile
                     </Button>
@@ -519,29 +439,25 @@ export default function JobDetailsPage() {
                       <AlertCircle className="w-6 h-6 text-red-600 mt-0.5" />
                       <div>
                         <p className="font-medium text-red-800 dark:text-red-200 mb-2">Not Eligible to Apply</p>
-                        <ul className="text-sm text-red-600 dark:text-red-300 space-y-1">
-                          {eligibilityCheck.reasons.map((reason, index) => (
-                            <li key={index}>• {reason}</li>
-                          ))}
-                        </ul>
+                        <p className="text-sm text-red-600 dark:text-red-300">
+                          You don't meet the eligibility requirements for this position.
+                        </p>
                       </div>
                     </div>
                   </div>
                 ) : isExpired ? (
-                  <div className="text-center p-6">
-                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <div className="text-center p-4">
+                    <Clock className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-600 dark:text-gray-400 mb-2">Application Deadline Passed</p>
                     <p className="text-sm text-gray-500">This position is no longer accepting applications.</p>
                   </div>
                 ) : (
-                  <div className="text-center p-6">
-                    <div className="mb-4">
-                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Ready to Apply!</p>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        You meet all the eligibility criteria for this position.
-                      </p>
-                    </div>
+                  <div className="text-center p-4">
+                    <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
+                    <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Ready to Apply!</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+                      You meet all the eligibility criteria for this position.
+                    </p>
                     <Button 
                       size="lg"
                       onClick={() => setIsApplicationDialogOpen(true)}
@@ -557,47 +473,119 @@ export default function JobDetailsPage() {
             {/* Job Description */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
-                <CardTitle>Job Description</CardTitle>
+                <CardTitle className="text-lg">Job Description</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="prose dark:prose-invert max-w-none">
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{job.description}</p>
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">{job.description}</p>
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Requirements */}
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Requirements & Eligibility</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold mb-2">Academic Requirements</h4>
-                  <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    <li>• Minimum UG percentage: {job.min_ug_percentage}%</li>
-                    <li>• {job.no_backlogs_required ? "No active backlogs allowed" : "Active backlogs permitted"}</li>
-                    <li>• Resume upload mandatory</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-2">Eligible Branches</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {job.branches_allowed.map((branch) => (
-                      <Badge key={branch} variant="outline">
-                        {branch}
-                      </Badge>
+          {/* Sidebar - Eligibility and Requirements */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Eligibility Issues - Show when not eligible */}
+            {student && !eligibilityCheck.eligible && eligibilityCheck.reasons.length > 0 && (
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg border-l-4 border-l-red-500">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-red-700 dark:text-red-300 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Eligibility Issues
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {eligibilityCheck.reasons.map((reason, index) => (
+                      <li key={index} className="text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+                        <span className="text-red-500 mt-1">•</span>
+                        <span>{reason}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Additional Eligibility Criteria */}
+            {(job.min_tenth_percentage || job.min_twelfth_percentage || job.eligible_courses && job.eligible_courses.length > 0 || job.eligibility_criteria?.year_of_graduation || job.no_backlogs_required) && (
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Additional Requirements</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {job.min_tenth_percentage && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <GraduationCap className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-500">Min 10th %</p>
+                        <p className="font-medium">{job.min_tenth_percentage}%</p>
+                      </div>
+                    </div>
+                  )}
+                  {job.min_twelfth_percentage && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <GraduationCap className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-500">Min 12th %</p>
+                        <p className="font-medium">{job.min_twelfth_percentage}%</p>
+                      </div>
+                    </div>
+                  )}
+                  {job.eligibility_criteria?.year_of_graduation && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <Calendar className="w-5 h-5 text-teal-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-500">Grad Year</p>
+                        <p className="font-medium">{job.eligibility_criteria.year_of_graduation}</p>
+                      </div>
+                    </div>
+                  )}
+                  {job.no_backlogs_required && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-500">Backlogs</p>
+                        <p className="font-medium text-red-600">Not Allowed</p>
+                      </div>
+                    </div>
+                  )}
+                  {job.eligible_courses && job.eligible_courses.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Courses:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {job.eligible_courses.map((course: string) => (
+                          <Badge key={course} variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                            {course}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Eligible Branches */}
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Eligible Branches</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {job.branches_allowed.map((branch) => (
+                    <Badge key={branch} variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                      {branch}
+                    </Badge>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
             {/* Selection Process */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Selection Process</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Selection Process</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -621,79 +609,11 @@ export default function JobDetailsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Application Status */}
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Application Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {hasApplied ? (
-                  <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription className="text-blue-800 dark:text-blue-200">
-                      You have already applied for this position.
-                    </AlertDescription>
-                  </Alert>
-                ) : isExpired ? (
-                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-red-800 dark:text-red-200">
-                      Application deadline has passed.
-                    </AlertDescription>
-                  </Alert>
-                ) : student && eligibilityCheck.eligible ? (
-                  <div className="space-y-4">
-                    <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-                      <CheckCircle className="h-4 w-4" />
-                      <AlertDescription className="text-green-800 dark:text-green-200">
-                        You are eligible to apply for this position!
-                      </AlertDescription>
-                    </Alert>
-                    <Button
-                      onClick={() => setIsApplicationDialogOpen(true)}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    >
-                      Apply Now
-                    </Button>
-                  </div>
-                ) : student ? (
-                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-red-800 dark:text-red-200">
-                      <div className="space-y-1">
-                        <p className="font-medium">Not eligible due to:</p>
-                        <ul className="list-disc list-inside text-sm">
-                          {eligibilityCheck.reasons.map((reason, index) => (
-                            <li key={index}>{reason}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-4">
-                    <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-                        Please complete your profile to check eligibility.
-                      </AlertDescription>
-                    </Alert>
-                    <Button onClick={() => router.push("/profile")} variant="outline" className="w-full">
-                      Complete Profile
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
             {/* Company Info */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Company Information</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Company Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
@@ -723,8 +643,8 @@ export default function JobDetailsPage() {
 
             {/* Quick Actions */}
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button

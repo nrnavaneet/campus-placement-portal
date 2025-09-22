@@ -60,23 +60,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const studentData = await getStudentByUserId(session.user.id)
-        if (studentData) {
-          setStudent(studentData)
-        }
-        setIsLoading(false)
-      } else if (event === 'SIGNED_OUT') {
-        setStudent(null)
-        setIsLoading(false)
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        // Ensure student data is still available after token refresh
-        if (!student) {
+      try {
+        if (event === 'SIGNED_IN' && session?.user) {
           const studentData = await getStudentByUserId(session.user.id)
           if (studentData) {
             setStudent(studentData)
           }
+          setIsLoading(false)
+        } else if (event === 'SIGNED_OUT') {
+          setStudent(null)
+          setIsLoading(false)
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Ensure student data is still available after token refresh
+          console.log('Token refreshed successfully')
+          if (!student) {
+            const studentData = await getStudentByUserId(session.user.id)
+            if (studentData) {
+              setStudent(studentData)
+            }
+          }
+          setIsLoading(false)
         }
+      } catch (error) {
+        console.error('Auth state change error:', error)
         setIsLoading(false)
       }
     })

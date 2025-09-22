@@ -233,10 +233,10 @@ export function LoginForm() {
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Campus Placement Portal
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
               MS Ramaiah University of Applied Sciences
             </CardDescription>
           </div>
