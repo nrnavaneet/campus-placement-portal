@@ -26,6 +26,8 @@ import { useTheme } from "@/contexts/theme-context"
 import { supabaseClient, type StudentDetails, type Job, type GrievanceReport } from "@/lib/supabase"
 import { toast } from "sonner"
 import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from "@/components/ui/professional-toast"
+import SafeComponent, { useErrorHandler } from "@/components/safe-component"
+import { ErrorHandler } from "@/lib/error-handler"
 import {
   Users,
   Briefcase,
@@ -56,7 +58,8 @@ import {
   User,
 } from "lucide-react"
 
-export default function AdminDashboard() {
+function AdminDashboard() {
+  const { handleError, handleAsyncError } = useErrorHandler()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState("overview")
@@ -3117,7 +3120,7 @@ ${reportData.placedStudentDetails
 
         {/* Company Report Dialog */}
         <Dialog open={isCompanyReportOpen} onOpenChange={setIsCompanyReportOpen}>
-          <DialogContent className="w-[98vw] sm:w-[95vw] max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-1 sm:mx-2 p-3 sm:p-6">
+          <DialogContent className="w-[98vw] sm:w-[95vw] max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-1 sm:mx-2 p-3 sm:p-6">
             <DialogHeader className="pb-3 sm:pb-4">
               <DialogTitle className="text-base sm:text-lg">Company-wise Report</DialogTitle>
               <DialogDescription className="text-xs sm:text-sm">
@@ -3134,7 +3137,62 @@ ${reportData.placedStudentDetails
                 </span>
               </div>
 
-              <div className="overflow-x-auto max-h-[50vh] sm:max-h-[60vh] -mx-3 sm:-mx-6 px-3 sm:px-6 border rounded-lg">
+              {/* Mobile Card View */}
+              <div className="block sm:hidden max-h-[50vh] overflow-y-auto space-y-3">
+                {(companyReportData || []).map((item, index) => (
+                  <div key={index} className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{item.student_name}</h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-mono">{item.student_reg_no}</p>
+                      </div>
+                      <Badge 
+                        className={`text-xs px-2 py-1 ml-2 ${
+                          item.status === 'placed' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : item.status === 'interview'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : item.status === 'rejected'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {item.status}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500">Company:</span>
+                        <p className="font-medium">{item.company_name}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Job:</span>
+                        <p className="font-medium truncate">{item.job_title}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Branch:</span>
+                        <p className="font-medium">{item.branch}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Package:</span>
+                        <p className="font-medium font-mono">
+                          {item.package ? `₹${(item.package / 100000).toFixed(1)}L` : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <span>UG: {item.ug_percentage || 'N/A'}%</span>
+                      <span>10th: {item.tenth_percentage || 'N/A'}%</span>
+                      <span>12th: {item.twelfth_percentage || 'N/A'}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto max-h-[60vh] -mx-6 px-6 border rounded-lg">
                 <div className="min-w-[900px]">
                   <table className="w-full text-xs sm:text-sm">
                     <thead className="border-b bg-gray-50 dark:bg-gray-800/50 sticky top-0">
@@ -3242,5 +3300,13 @@ ${reportData.placedStudentDetails
       
       <Footer variant="admin" />
     </div>
+  )
+}
+
+export default function AdminDashboardWithErrorHandling() {
+  return (
+    <SafeComponent showDetails={process.env.NODE_ENV === 'development'}>
+      <AdminDashboard />
+    </SafeComponent>
   )
 }
