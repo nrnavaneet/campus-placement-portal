@@ -15,22 +15,22 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Grievance submission started...')
+    console.log('Grievance submission started...')
     const body = await request.json()
-    console.log('📝 Received data:', body)
+    console.log('Received data:', body)
     
     const { studentRegNo, studentName, issueType, message, contactEmail } = body
 
     // Validate required fields
     if (!studentRegNo || !studentName || !issueType || !message || !contactEmail) {
-      console.log('❌ Validation failed - missing fields')
+      console.log('Validation failed - missing fields')
       return NextResponse.json(
         { error: "All fields are required" },
         { status: 400 }
       )
     }
 
-    console.log('✅ Validation passed, inserting to database...')
+    console.log('Validation passed, inserting to database...')
     // Insert grievance into database
     const { data, error } = await supabaseAdmin
       .from("grievance_reports")
@@ -47,14 +47,14 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (error) {
-      console.error("❌ Database error:", error)
+      console.error("Database error:", error)
       return NextResponse.json(
         { error: "Failed to submit grievance", details: error.message },
         { status: 500 }
       )
     }
 
-    console.log('✅ Grievance submitted successfully:', data)
+    console.log('Grievance submitted successfully:', data)
     return NextResponse.json(
       { message: "Grievance submitted successfully", data },
       { status: 201 }
@@ -70,22 +70,22 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    console.log('🔄 Grievance update started...')
+    console.log('Grievance update started...')
     const body = await request.json()
-    console.log('📝 Received update data:', body)
+    console.log('Received update data:', body)
     
     const { id, status, admin_response } = body
 
     // Validate required fields
     if (!id || !status) {
-      console.log('❌ Validation failed - missing id or status')
+      console.log('Validation failed - missing id or status')
       return NextResponse.json(
         { error: "Grievance ID and status are required" },
         { status: 400 }
       )
     }
 
-    console.log('✅ Validation passed, updating database...')
+    console.log('Validation passed, updating database...')
     // Update grievance in database
     const { data, error } = await supabaseAdmin
       .from("grievance_reports")
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest) {
       .select()
 
     if (error) {
-      console.error("❌ Database error:", error)
+      console.error("Database error:", error)
       return NextResponse.json(
         { error: "Failed to update grievance", details: error.message },
         { status: 500 }
@@ -106,14 +106,14 @@ export async function PUT(request: NextRequest) {
     }
 
     if (!data || data.length === 0) {
-      console.log('❌ Grievance not found')
+      console.log('Grievance not found')
       return NextResponse.json(
         { error: "Grievance not found" },
         { status: 404 }
       )
     }
 
-    console.log('✅ Grievance updated successfully:', data)
+    console.log('Grievance updated successfully:', data)
     return NextResponse.json(
       { message: "Grievance updated successfully", data: data[0] },
       { status: 200 }
@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Fast fetching grievances...')
+    console.log('Fast fetching grievances...')
     const { searchParams } = new URL(request.url)
     const studentRegNo = searchParams.get("student_reg_no")
 
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} grievances quickly`)
+    console.log(`Fetched ${data?.length || 0} grievances quickly`)
     
     // Add caching headers for better performance
     const response = NextResponse.json(data)

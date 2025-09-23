@@ -239,13 +239,13 @@ function createApplicationStatusTemplate(data: ApplicationStatusData): EmailTemp
   }
   
   const statusColor = statusColors[data.newStatus.toLowerCase()] || '#6b7280'
-  const subject = `📋 Application Update: ${data.jobTitle} - ${data.newStatus.replace('_', ' ').toUpperCase()}`
+  const subject = `Application Update: ${data.jobTitle} - ${data.newStatus.replace('_', ' ').toUpperCase()}`
   
   const htmlBody = `
     <style>${emailStyles}</style>
     <div class="email-container">
       <div class="header">
-        <h1>📋 Application Status Update</h1>
+        <h1>Application Status Update</h1>
         <p>Your application status has been updated</p>
       </div>
       
@@ -466,7 +466,7 @@ function createDeadlineReminderSMSTemplate(data: DeadlineReminderData): SMSTempl
 // Send Email using console logging for development or Nodemailer for production
 async function sendEmail(to: string, template: EmailTemplate): Promise<boolean> {
   try {
-    console.log('📧 Email Notification Details:')
+    console.log('Email Notification Details:')
     console.log('To:', to)
     console.log('Subject:', template.subject)
     console.log('Content Preview:', template.textBody.substring(0, 300) + '...')
@@ -490,26 +490,26 @@ async function sendEmail(to: string, template: EmailTemplate): Promise<boolean> 
         })
         
         if (response.ok) {
-          console.log('✅ Email sent successfully to:', to)
+          console.log('Email sent successfully to:', to)
           return true
         } else {
-          console.error('❌ Email service error:', await response.text())
+          console.error('Email service error:', await response.text())
           return false
         }
       } catch (emailError) {
-        console.error('❌ Email API error:', emailError)
+        console.error('Email API error:', emailError)
         return false
       }
     } else {
       // Development mode - simulate email sending
       await new Promise(resolve => setTimeout(resolve, 500))
-      console.log('✅ Email simulated successfully to:', to)
-      console.log('🔧 Note: Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables for actual email sending')
+      console.log('Email simulated successfully to:', to)
+      console.log('Note: Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables for actual email sending')
       return true
     }
     
   } catch (error) {
-    console.error('❌ Failed to send email:', error)
+    console.error('Failed to send email:', error)
     return false
   }
 }

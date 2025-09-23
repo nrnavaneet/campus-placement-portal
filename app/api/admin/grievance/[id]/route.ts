@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         
         // Call notification service (would need to implement grievance notifications)
         // For now, just log that notification would be sent
-        console.log("✅ Grievance resolution notification would be sent")
+        console.log("Grievance resolution notification would be sent")
         
       } catch (notificationError) {
         console.error("Failed to send notification:", notificationError)

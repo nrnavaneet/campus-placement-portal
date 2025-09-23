@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // For now, we'll use console logging
     // In production, you would use Nodemailer or another service
-    console.log('📧 Production Email Service:')
+    console.log('Production Email Service:')
     console.log('To:', to)
     console.log('Subject:', subject)
     console.log('HTML Content:', html ? 'Present' : 'Not provided')
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     const emailPass = process.env.EMAIL_PASS
 
     if (!emailHost || !emailUser || !emailPass) {
-      console.log('⚠️ Email configuration missing. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS')
-      console.log('✅ Email would be sent in production with proper config')
+      console.log('Email configuration missing. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS')
+      console.log('Email would be sent in production with proper config')
       return NextResponse.json({ success: true, message: 'Email simulated (config missing)' })
     }
 
@@ -55,11 +55,11 @@ export async function POST(request: NextRequest) {
     })
     */
 
-    console.log('✅ Email would be sent successfully')
+    console.log('Email would be sent successfully')
     return NextResponse.json({ success: true, message: 'Email sent successfully' })
 
   } catch (error) {
-    console.error('❌ Email API error:', error)
+    console.error('Email API error:', error)
     return NextResponse.json(
       { error: 'Failed to send email' },
       { status: 500 }

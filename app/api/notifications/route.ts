@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 // Mock notification services (replace with real services in production)
 async function sendEmail(to: string, subject: string, content: string): Promise<boolean> {
   // Mock email sending - replace with real service
-  console.log(`📧 Email sent to ${to}: ${subject}`)
+  console.log(`Email sent to ${to}: ${subject}`)
   return true
 }
 
 async function sendSMS(to: string, message: string): Promise<boolean> {
   // Mock SMS sending - replace with real service like Twilio
-  console.log(`📱 SMS sent to ${to}: ${message}`)
+  console.log(`SMS sent to ${to}: ${message}`)
   return true
 }
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       phone: '+1234567890'
     }
 
-    console.log(`🔔 Processing ${type} notification for student ${studentId}`)
+    console.log(`Processing ${type} notification for student ${studentId}`)
 
     let notificationSent = false
     let result = false
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log notification attempt (in production, save to database)
-    console.log(`📊 Notification log:`, {
+    console.log(`Notification log:`, {
       student_id: studentId,
       type,
       method: mockStudentSettings.email_notifications ? 'email' : 'sms',
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error sending notification:', error)
+    console.error('Error sending notification:', error)
     return NextResponse.json(
       { error: 'Failed to send notification' },
       { status: 500 }

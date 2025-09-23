@@ -620,7 +620,7 @@ export default function JobsPage() {
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600 dark:text-gray-400">Eligibility:</span>
                               <span className={`font-medium ${isEligibleForJob(job, studentProfile) ? 'text-green-600' : 'text-red-600'}`}>
-                                {isEligibleForJob(job, studentProfile) ? '✓ Eligible' : '✗ Not Eligible'}
+                                {isEligibleForJob(job, studentProfile) ? 'Eligible' : 'Not Eligible'}
                               </span>
                             </div>
                             {!isEligibleForJob(job, studentProfile) && (

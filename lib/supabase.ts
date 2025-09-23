@@ -52,9 +52,9 @@ const testSupabaseConnectivity = async () => {
 }
 
 if (isDemoMode && typeof window !== "undefined") {
-  console.warn("⚠️ Running in demo mode. Data will not be saved to Supabase.")
+  console.warn("Running in demo mode. Data will not be saved to Supabase.")
 } else if (typeof window !== "undefined") {
-  console.log(`🔗 Connecting to Supabase at: ${supabaseUrl}`)
+  console.log(`Connecting to Supabase at: ${supabaseUrl}`)
   testSupabaseConnectivity()
 }
 

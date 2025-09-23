@@ -216,7 +216,7 @@ function AdminDashboard() {
       if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
         const result = await studentsResponse.value.json()
         allStudents = result.data || []
-        console.log('👥 Students fetched:', allStudents.length)
+        console.log('Students fetched:', allStudents.length)
       } else {
         console.error('Failed to fetch students')
       }
@@ -227,7 +227,7 @@ function AdminDashboard() {
       if (jobsResponse.status === 'fulfilled' && jobsResponse.value.ok) {
         const result = await jobsResponse.value.json()
         allJobs = result.data || []
-        console.log('💼 Jobs fetched:', allJobs.length)
+        console.log('Jobs fetched:', allJobs.length)
       } else {
         console.error('Failed to fetch jobs')
       }
@@ -238,7 +238,7 @@ function AdminDashboard() {
       if (companiesResponse.status === 'fulfilled' && companiesResponse.value.ok) {
         const result = await companiesResponse.value.json()
         allCompanies = result.companies || []
-        console.log('🏢 Companies fetched:', allCompanies.length)
+        console.log('Companies fetched:', allCompanies.length)
       } else {
         console.error('Failed to fetch companies')
       }
@@ -249,7 +249,7 @@ function AdminDashboard() {
       if (grievancesResponse.status === 'fulfilled' && grievancesResponse.value.ok) {
         const result = await grievancesResponse.value.json()
         allGrievances = Array.isArray(result) ? result : result.data || []
-        console.log('📝 Grievances fetched:', allGrievances.length)
+        console.log('Grievances fetched:', allGrievances.length)
       } else {
         console.error('Failed to fetch grievances')
       }
@@ -260,7 +260,7 @@ function AdminDashboard() {
       if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
         const result = await applicationsResponse.value.json()
         allApplications = result.applications || []
-        console.log('📋 Applications fetched:', allApplications.length)
+        console.log('Applications fetched:', allApplications.length)
       } else {
         console.error('Failed to fetch applications')
       }
@@ -269,7 +269,7 @@ function AdminDashboard() {
       if (activitiesResponse.status === 'fulfilled' && activitiesResponse.value.ok) {
         const result = await activitiesResponse.value.json()
         setRecentActivities(result.data || [])
-        console.log('🔔 Activities fetched:', result.data?.length || 0)
+        console.log('Activities fetched:', result.data?.length || 0)
       } else {
         console.error('Failed to fetch activities')
       }
@@ -291,7 +291,7 @@ function AdminDashboard() {
         averagePackage: Math.round(avgPackage * 10) / 10,
       }
 
-      console.log('📊 Stats calculated in parallel:', calculatedStats)
+      console.log('Stats calculated in parallel:', calculatedStats)
       setStats(calculatedStats)
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -628,7 +628,7 @@ function AdminDashboard() {
 
   const refreshGrievances = async () => {
     try {
-      console.log('🔄 Fast refresh grievances only...')
+      console.log('Fast refresh grievances only...')
       const response = await fetch('/api/grievance')
       if (response.ok) {
         const result = await response.json()
@@ -638,7 +638,7 @@ function AdminDashboard() {
         // Update pending grievances count in stats
         const pendingCount = allGrievances.filter((g: GrievanceReport) => g.status === "submitted").length
         setStats(prev => ({ ...prev, pendingGrievances: pendingCount }))
-        console.log('✅ Grievances refreshed quickly')
+        console.log('Grievances refreshed quickly')
       }
     } catch (error) {
       console.error('Error refreshing grievances:', error)
@@ -652,7 +652,7 @@ function AdminDashboard() {
     }
 
     try {
-      console.log('🔄 Updating grievance:', selectedGrievance.id)
+      console.log('Updating grievance:', selectedGrievance.id)
       
       const response = await fetch('/api/grievance', {
         method: 'PUT',
@@ -667,7 +667,7 @@ function AdminDashboard() {
       })
 
       const result = await response.json()
-      console.log('📝 API response:', result)
+      console.log('API response:', result)
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to update grievance')

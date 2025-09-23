@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    console.log('📤 Sending application notification for:', {
+    console.log('Sending application notification for:', {
       applicationId,
       jobId,
       studentId

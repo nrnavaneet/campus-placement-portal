@@ -124,12 +124,12 @@ export default function GrievancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('🔄 Starting grievance submission...')
-    console.log('📝 Form data:', formData)
+    console.log('Starting grievance submission...')
+    console.log('Form data:', formData)
     setIsLoading(true)
 
     try {
-      console.log('📡 Sending API request...')
+      console.log('Sending API request...')
       const response = await fetch("/api/grievance", {
         method: "POST",
         headers: {
@@ -138,11 +138,11 @@ export default function GrievancePage() {
         body: JSON.stringify(formData),
       })
 
-      console.log('📨 API response status:', response.status)
+      console.log('API response status:', response.status)
       
       if (response.ok) {
         const result = await response.json()
-        console.log('✅ Success response:', result)
+        console.log('Success response:', result)
         toast.success("Grievance submitted successfully! We'll get back to you soon.", {
           duration: 4000, // Auto-fade after 4 seconds (longer message)
         })
@@ -155,15 +155,15 @@ export default function GrievancePage() {
         fetchGrievances() // Refresh the list
       } else {
         const error = await response.json()
-        console.error('❌ Error response:', error)
+        console.error('Error response:', error)
         toast.error(error.error || "Failed to submit grievance")
       }
     } catch (error) {
-      console.error("❌ Fetch error:", error)
+      console.error("Fetch error:", error)
       toast.error("Failed to submit grievance")
     } finally {
       setIsLoading(false)
-      console.log('🏁 Grievance submission completed')
+      console.log('Grievance submission completed')
     }
   }
 
