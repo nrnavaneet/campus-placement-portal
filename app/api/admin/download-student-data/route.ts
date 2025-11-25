@@ -17,6 +17,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const company = searchParams.get('company') || 'all'
 
+    const getBaseUrl = () => {
+      const origin = request.headers.get('origin')
+      if (origin) return origin.replace(/\/$/, '')
+
+      const host = request.headers.get('host')
+      if (host) {
+        const protocol = host.includes('localhost') ? 'http' : 'https'
+        return `${protocol}://${host}`
+      }
+
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
+      }
+
+      throw new Error("Unable to determine base URL for resume downloads")
+    }
+
+    const baseUrl = getBaseUrl()
+
     // Get applications data for the specified company
     let query = supabaseAdmin
       .from('application_status')
@@ -146,7 +165,7 @@ export async function GET(request: NextRequest) {
       if (student.resume_url) {
         try {
           // Fetch resume from admin API
-          const resumeResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/resume/download?regNo=${student.college_reg_no}`)
+          const resumeResponse = await fetch(`${baseUrl}/api/admin/resume/download?regNo=${student.college_reg_no}`)
           
           if (resumeResponse.ok) {
             const resumeBlob = await resumeResponse.blob()
