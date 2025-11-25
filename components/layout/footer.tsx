@@ -84,10 +84,10 @@ export function Footer({ variant = "student" }: FooterProps) {
                 </div>
                 <div className="mt-1 flex items-center space-x-2">
                   <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-bold text-white">N</span>
+                    <span className="text-xs font-bold text-white">P</span>
                   </div>
                   <span className="text-xs sm:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    N R Navaneet
+                    Project 90
                   </span>
                 </div>
               </div>

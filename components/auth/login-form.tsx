@@ -61,25 +61,27 @@ export function LoginForm() {
           })
 
           if (error) {
-            if (error.message.includes("Invalid login credentials")) {
-              throw new Error("User doesn't exist, please register first")
-            }
-            throw error
+              if (error.message.includes("Invalid login credentials")) {
+                // Redirect immediately to register page if user doesn't exist
+                router.push("/register")
+                return
+              }
+              throw error
           }
 
           // If auth succeeds but login() failed, it means no student profile
           if (data.user) {
-            setError("Please complete your registration first")
-            setTimeout(() => {
+              setError("Please complete your registration first")
               router.push("/register")
-            }, 2000)
+              return
           }
         } catch (authError: any) {
-          if (authError.message.includes("Invalid login credentials")) {
-            setError("User doesn't exist, please register first")
-          } else {
-            setError(authError.message || "Login failed. Please try again.")
-          }
+            if (authError.message.includes("Invalid login credentials")) {
+              router.push("/register")
+              return
+            } else {
+              setError(authError.message || "Login failed. Please try again.")
+            }
         }
       }
     } catch (error: any) {
