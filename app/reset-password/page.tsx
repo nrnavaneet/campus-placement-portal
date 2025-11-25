@@ -16,28 +16,88 @@ function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerifyingLink, setIsVerifyingLink] = useState(true)
+  const [isLinkValid, setIsLinkValid] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Check if we have the proper hash parameters for password reset
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const refreshToken = hashParams.get('refresh_token')
-    const type = hashParams.get('type')
+    const verifyRecoveryLink = async () => {
+      setIsVerifyingLink(true)
+      setError("")
 
-    if (type === 'recovery' && accessToken) {
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || '',
-      })
-    } else {
-      setError("Invalid password reset link. Please request a new one.")
+      try {
+        const hashString = window.location.hash.replace(/^#/, "")
+        const hashParams = new URLSearchParams(hashString)
+        const queryString = window.location.search
+        const queryParams = new URLSearchParams(queryString)
+
+        const errorCode = queryParams.get("error_code") || hashParams.get("error_code")
+        const errorDescription = queryParams.get("error_description") || hashParams.get("error_description")
+        if (errorCode) {
+          throw new Error(errorDescription || "Invalid or expired password reset link.")
+        }
+
+        const type = hashParams.get("type") || queryParams.get("type")
+        const accessToken = hashParams.get("access_token") || queryParams.get("access_token")
+        const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token")
+        const code = queryParams.get("code")
+        const otpToken = queryParams.get("token_hash") || queryParams.get("token")
+        const emailFromLink = queryParams.get("email") || hashParams.get("email")
+
+        if (type === "recovery" && accessToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || "",
+          })
+
+          if (sessionError) {
+            throw sessionError
+          }
+
+          setIsLinkValid(true)
+          return
+        }
+
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) {
+            throw exchangeError
+          }
+
+          setIsLinkValid(true)
+          return
+        }
+
+        if (type === "recovery" && otpToken && emailFromLink) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            email: emailFromLink,
+            token: otpToken,
+            type: "recovery",
+          })
+
+          if (verifyError) {
+            throw verifyError
+          }
+
+          setIsLinkValid(true)
+          return
+        }
+
+        throw new Error("Invalid password reset link. Please request a new one.")
+      } catch (linkError: any) {
+        console.error("Reset password link validation failed:", linkError)
+        setError(linkError.message || "Invalid password reset link. Please request a new one.")
+        setIsLinkValid(false)
+      } finally {
+        setIsVerifyingLink(false)
+      }
     }
-  }, [])
+
+    verifyRecoveryLink()
+  }, [searchParams])
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -145,7 +205,7 @@ function ResetPasswordForm() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-              disabled={isLoading}
+              disabled={isLoading || isVerifyingLink || !isLinkValid}
             >
               {isLoading ? "Updating Password..." : "Update Password"}
             </Button>
@@ -154,6 +214,14 @@ function ResetPasswordForm() {
           {error && (
             <Alert className="mt-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
               <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {isVerifyingLink && !error && (
+            <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
+                Verifying your reset link...
+              </AlertDescription>
             </Alert>
           )}
 

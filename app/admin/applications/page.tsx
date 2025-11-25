@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Navbar } from "@/components/layout/navbar"
+import { AdminNavbar } from "@/components/layout/admin-navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -433,7 +433,7 @@ export default function AdminApplicationsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <Navbar />
+      <AdminNavbar title="Admin Applications" description="Manage student applications" />
       
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}

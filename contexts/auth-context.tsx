@@ -165,15 +165,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       })
-      
-      if (error) throw error
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send reset email")
+      }
+
       return true
     } catch (error) {
-      console.error('Password reset error:', error)
-      return false
+      console.error("Password reset error:", error)
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Failed to send reset email. Please try again.")
     }
   }
 

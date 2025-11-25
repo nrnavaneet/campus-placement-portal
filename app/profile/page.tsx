@@ -41,6 +41,8 @@ export default function ProfilePage() {
   const [profileCompletion, setProfileCompletion] = useState(0)
   const [showResumePreview, setShowResumePreview] = useState(false)
   const [resumePreviewUrl, setResumePreviewUrl] = useState("")
+  const [ugInputMode, setUgInputMode] = useState<"percentage" | "cgpa">("percentage")
+  const [ugInputValue, setUgInputValue] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -120,10 +122,72 @@ export default function ProfilePage() {
     setProfileCompletion(percentage)
   }
 
+  const formatNumber = (value: number) => {
+    if (!Number.isFinite(value)) return ""
+    return Number.parseFloat(value.toFixed(2)).toString()
+  }
+
+  const convertCgpaToPercentage = (cgpa: number, scale = 10) => {
+    if (!Number.isFinite(cgpa)) return NaN
+    return (cgpa / scale) * 100
+  }
+
+  const convertPercentageToCgpa = (percentage: number, scale = 10) => {
+    if (!Number.isFinite(percentage)) return NaN
+    return (percentage / 100) * scale
+  }
+
+  useEffect(() => {
+    if (!student || student.ug_percentage == null) {
+      setUgInputValue("")
+      setUgInputMode("percentage")
+      return
+    }
+
+    if (student.ug_percentage <= 10) {
+      setUgInputMode("cgpa")
+      setUgInputValue(formatNumber(student.ug_percentage))
+    } else {
+      setUgInputMode("percentage")
+      setUgInputValue(formatNumber(student.ug_percentage))
+    }
+  }, [student])
+
   const handleInputChange = (field: keyof StudentDetails, value: any) => {
     if (student) {
       setStudent({ ...student, [field]: value })
     }
+  }
+
+  const handleUgModeChange = (mode: "percentage" | "cgpa") => {
+    setUgInputMode(mode)
+    if (!student || student.ug_percentage == null) {
+      setUgInputValue("")
+      return
+    }
+
+    if (mode === "cgpa") {
+      const cgpaValue = convertPercentageToCgpa(student.ug_percentage)
+      setUgInputValue(formatNumber(cgpaValue))
+    } else {
+      setUgInputValue(formatNumber(student.ug_percentage))
+    }
+  }
+
+  const handleUgInputChange = (value: string) => {
+    setUgInputValue(value)
+
+    if (!student) return
+    if (!value) {
+      handleInputChange("ug_percentage", Number.NaN as unknown as number)
+      return
+    }
+
+    const numeric = Number.parseFloat(value)
+    if (Number.isNaN(numeric)) return
+
+    const percentageValue = ugInputMode === "cgpa" ? convertCgpaToPercentage(numeric) : numeric
+    handleInputChange("ug_percentage", Number.parseFloat(percentageValue.toFixed(2)))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -603,18 +667,39 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="percentage" className="text-sm">UG Percentage</Label>
-                          <Input
-                            id="percentage"
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={student.ug_percentage}
-                            onChange={(e) => handleInputChange("ug_percentage", Number.parseFloat(e.target.value))}
-                            disabled={!isEditing}
-                            className="text-sm"
-                          />
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="ug-score" className="text-sm">
+                              UG Score
+                            </Label>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Select value={ugInputMode} onValueChange={(value) => handleUgModeChange(value as "percentage" | "cgpa")} disabled={!isEditing}>
+                                <SelectTrigger className="sm:w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="percentage">Percentage</SelectItem>
+                                  <SelectItem value="cgpa">CGPA (out of 10)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                id="ug-score"
+                                type="number"
+                                min={ugInputMode === "percentage" ? "0" : "0"}
+                                max={ugInputMode === "percentage" ? "100" : "10"}
+                                step="0.01"
+                                value={ugInputValue}
+                                onChange={(e) => handleUgInputChange(e.target.value)}
+                                disabled={!isEditing}
+                                placeholder={ugInputMode === "percentage" ? "Eg. 82.5" : "Eg. 8.2"}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {ugInputMode === "cgpa"
+                              ? "We will convert your CGPA (out of 10) to percentage before saving."
+                              : "Stored directly as percentage."}
+                          </p>
                         </div>
                       </div>
                     </div>

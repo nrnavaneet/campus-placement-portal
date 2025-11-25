@@ -147,6 +147,10 @@ function AdminDashboard() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [newJobUgMode, setNewJobUgMode] = useState<"percentage" | "cgpa">("percentage")
+  const [newJobUgValue, setNewJobUgValue] = useState("")
+  const [editJobUgMode, setEditJobUgMode] = useState<"percentage" | "cgpa">("percentage")
+  const [editJobUgValue, setEditJobUgValue] = useState("")
 
   const branches = [
     "Computer Science",
@@ -170,6 +174,38 @@ function AdminDashboard() {
       fetchData()
     }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    if (!newJob.min_ug_percentage) {
+      setNewJobUgValue("")
+      return
+    }
+
+    const percentage = Number.parseFloat(newJob.min_ug_percentage)
+    if (Number.isNaN(percentage)) {
+      setNewJobUgValue("")
+      return
+    }
+
+    const displayValue = newJobUgMode === "cgpa" ? convertPercentageToCgpa(percentage) : percentage
+    setNewJobUgValue(formatNumber(displayValue))
+  }, [newJob.min_ug_percentage, newJobUgMode])
+
+  useEffect(() => {
+    if (!editJob.min_ug_percentage) {
+      setEditJobUgValue("")
+      return
+    }
+
+    const percentage = Number.parseFloat(editJob.min_ug_percentage)
+    if (Number.isNaN(percentage)) {
+      setEditJobUgValue("")
+      return
+    }
+
+    const displayValue = editJobUgMode === "cgpa" ? convertPercentageToCgpa(percentage) : percentage
+    setEditJobUgValue(formatNumber(displayValue))
+  }, [editJob.min_ug_percentage, editJobUgMode])
 
   const checkAdminAuth = () => {
     const adminSession = localStorage.getItem("admin_session")
@@ -317,6 +353,55 @@ function AdminDashboard() {
     })
   }
 
+  const formatNumber = (value: number) => {
+    if (!Number.isFinite(value)) return ""
+    return Number.parseFloat(value.toFixed(2)).toString()
+  }
+
+  const convertCgpaToPercentage = (cgpa: number, scale = 10) => {
+    if (!Number.isFinite(cgpa)) return NaN
+    return (cgpa / scale) * 100
+  }
+
+  const convertPercentageToCgpa = (percentage: number, scale = 10) => {
+    if (!Number.isFinite(percentage)) return NaN
+    return (percentage / 100) * scale
+  }
+
+  const handleNewJobUgInputChange = (value: string) => {
+    setNewJobUgValue(value)
+
+    if (!value) {
+      setNewJob((prev) => ({ ...prev, min_ug_percentage: "" }))
+      return
+    }
+
+    const numericValue = Number.parseFloat(value)
+    if (Number.isNaN(numericValue)) {
+      return
+    }
+
+    const percentageValue = newJobUgMode === "cgpa" ? convertCgpaToPercentage(numericValue) : numericValue
+    setNewJob((prev) => ({ ...prev, min_ug_percentage: formatNumber(percentageValue) }))
+  }
+
+  const handleEditJobUgInputChange = (value: string) => {
+    setEditJobUgValue(value)
+
+    if (!value) {
+      setEditJob((prev) => ({ ...prev, min_ug_percentage: "" }))
+      return
+    }
+
+    const numericValue = Number.parseFloat(value)
+    if (Number.isNaN(numericValue)) {
+      return
+    }
+
+    const percentageValue = editJobUgMode === "cgpa" ? convertCgpaToPercentage(numericValue) : numericValue
+    setEditJob((prev) => ({ ...prev, min_ug_percentage: formatNumber(percentageValue) }))
+  }
+
   const handleAddJob = async () => {
     setError(null)
     setSuccess(null)
@@ -460,6 +545,8 @@ function AdminDashboard() {
         status: "upcoming",
       job_title: "",
       })
+      setNewJobUgMode("percentage")
+      setNewJobUgValue("")
 
       setError(null)
       toast.success("Job posted successfully!", {
@@ -502,6 +589,8 @@ function AdminDashboard() {
       status: job.status,
       job_title: job.tpo || "",
     })
+    setEditJobUgMode("percentage")
+    setEditJobUgValue(job.min_ug_percentage?.toString() || "")
     setIsEditJobOpen(true)
   }
 
@@ -1635,16 +1724,32 @@ ${reportData.placedStudentDetails
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="minPercentage" className="text-sm font-medium">Min UG Percentage</Label>
-                            <Input
-                              id="minPercentage"
-                              type="number"
-                              step="0.01"
-                              value={newJob.min_ug_percentage}
-                              onChange={(e) => setNewJob({ ...newJob, min_ug_percentage: e.target.value })}
-                              placeholder="70.0"
-                              className="h-10"
-                            />
+                            <Label className="text-sm font-medium">Min UG Score</Label>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Select value={newJobUgMode} onValueChange={(value) => setNewJobUgMode(value as "percentage" | "cgpa")}>
+                                <SelectTrigger className="h-10 sm:w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="percentage">Percentage</SelectItem>
+                                  <SelectItem value="cgpa">CGPA (out of 10)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                id="minPercentage"
+                                type="number"
+                                min={newJobUgMode === "percentage" ? "0" : "0"}
+                                max={newJobUgMode === "percentage" ? "100" : "10"}
+                                step="0.01"
+                                value={newJobUgValue}
+                                onChange={(e) => handleNewJobUgInputChange(e.target.value)}
+                                placeholder={newJobUgMode === "percentage" ? "70.0" : "7.0"}
+                                className="h-10"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Always stored as percentage. CGPA entries (out of 10) are converted automatically.
+                            </p>
                           </div>
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Backlogs Allowed?</Label>
@@ -2666,15 +2771,31 @@ ${reportData.placedStudentDetails
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-ug-percentage">Min UG Percentage *</Label>
-                  <Input
-                    id="edit-ug-percentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editJob.min_ug_percentage}
-                    onChange={(e) => setEditJob({ ...editJob, min_ug_percentage: e.target.value })}
-                  />
+                  <Label>Min UG Score *</Label>
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <Select value={editJobUgMode} onValueChange={(value) => setEditJobUgMode(value as "percentage" | "cgpa")}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentage</SelectItem>
+                        <SelectItem value="cgpa">CGPA (out of 10)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      id="edit-ug-percentage"
+                      type="number"
+                      min={editJobUgMode === "percentage" ? "0" : "0"}
+                      max={editJobUgMode === "percentage" ? "100" : "10"}
+                      step="0.01"
+                      value={editJobUgValue}
+                      onChange={(e) => handleEditJobUgInputChange(e.target.value)}
+                      placeholder={editJobUgMode === "percentage" ? "70.0" : "7.0"}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Stored as percentage for eligibility checks regardless of entry format.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-tenth-percentage">Min 10th Percentage</Label>

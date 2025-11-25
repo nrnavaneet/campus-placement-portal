@@ -103,8 +103,8 @@ export default function JobsPage() {
 
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState("deadline")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+  const [sortBy, setSortBy] = useState("posted")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   const router = useRouter()
 

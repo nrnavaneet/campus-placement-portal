@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,9 +56,26 @@ export function RegistrationForm() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeError, setResumeError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [ugInputMode, setUgInputMode] = useState<"percentage" | "cgpa">("percentage")
+  const [ugInputValue, setUgInputValue] = useState("")
 
   const totalSteps = 4
   const progress = (currentStep / totalSteps) * 100
+
+  const formatNumber = (value: number) => {
+    if (!Number.isFinite(value)) return ""
+    return Number.parseFloat(value.toFixed(2)).toString()
+  }
+
+  const convertCgpaToPercentage = (cgpa: number, scale = 10) => {
+    if (!Number.isFinite(cgpa)) return NaN
+    return (cgpa / scale) * 100
+  }
+
+  const convertPercentageToCgpa = (percentage: number, scale = 10) => {
+    if (!Number.isFinite(percentage)) return NaN
+    return (percentage / 100) * scale
+  }
 
   const validateRegNo = (regNo: string) => {
     const regex = /^22[A-Z]{2,4}[0-9]{6}$/i
@@ -90,6 +107,22 @@ export function RegistrationForm() {
     return null
   }
 
+  useEffect(() => {
+    if (!formData.ugPercentage) {
+      setUgInputValue("")
+      return
+    }
+
+    const percentage = Number.parseFloat(formData.ugPercentage)
+    if (Number.isNaN(percentage)) {
+      setUgInputValue("")
+      return
+    }
+
+    const displayValue = ugInputMode === "cgpa" ? convertPercentageToCgpa(percentage) : percentage
+    setUgInputValue(formatNumber(displayValue))
+  }, [formData.ugPercentage, ugInputMode])
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value }
@@ -102,6 +135,27 @@ export function RegistrationForm() {
       return updated
     })
     setError("")
+  }
+
+  const handleUgModeChange = (mode: "percentage" | "cgpa") => {
+    setUgInputMode(mode)
+  }
+
+  const handleUgScoreChange = (value: string) => {
+    setUgInputValue(value)
+
+    if (!value) {
+      handleInputChange("ugPercentage", "")
+      return
+    }
+
+    const numericValue = Number.parseFloat(value)
+    if (Number.isNaN(numericValue)) {
+      return
+    }
+
+    const percentageValue = ugInputMode === "cgpa" ? convertCgpaToPercentage(numericValue) : numericValue
+    handleInputChange("ugPercentage", formatNumber(percentageValue))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -487,19 +541,35 @@ export function RegistrationForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ugPercentage">UG Percentage *</Label>
-                <Input
-                  id="ugPercentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={formData.ugPercentage}
-                  onChange={(e) => handleInputChange("ugPercentage", e.target.value)}
-                  placeholder="85.5"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+                <Label>UG Score *</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Select value={ugInputMode} onValueChange={(value) => handleUgModeChange(value as "percentage" | "cgpa")}>
+                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 sm:w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage</SelectItem>
+                      <SelectItem value="cgpa">CGPA (out of 10)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="ugScore"
+                    type="number"
+                    min={ugInputMode === "percentage" ? "0" : "0"}
+                    max={ugInputMode === "percentage" ? "100" : "10"}
+                    step="0.01"
+                    value={ugInputValue}
+                    onChange={(e) => handleUgScoreChange(e.target.value)}
+                    placeholder={ugInputMode === "percentage" ? "e.g. 85.5" : "e.g. 8.5"}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  {ugInputMode === "cgpa"
+                    ? "CGPA (out of 10) will be converted to percentage for eligibility checks."
+                    : "Value will be stored as a percentage."}
+                </p>
               </div>
             </div>
 
