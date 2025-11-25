@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yourusername/campus-placement-portal"><img src="https://img.shields.io/github/stars/yourusername/campus-placement-portal?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/nrnavaneet/campus-placement-portal"><img src="https://img.shields.io/github/stars/nrnavaneet/campus-placement-portal?style=social" alt="GitHub stars"></a>
   <a href="https://vercel.com/"><img src="https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel" alt="Vercel"></a>
   <a href="https://supabase.com/"><img src="https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase" alt="Supabase"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Frontend-Next.js-black?logo=next.js" alt="Next.js"></a>
