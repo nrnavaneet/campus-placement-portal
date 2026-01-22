@@ -27,6 +27,7 @@ import {
   Menu,
   X,
   MessageSquare,
+  Sparkles,
 } from "lucide-react"
 
 export function Navbar() {
@@ -118,6 +119,7 @@ export function Navbar() {
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/jobs", label: "Jobs", icon: Briefcase },
     { href: "/applications", label: "Applications", icon: FileText },
+    { href: "/chat", label: "Interview Prep", icon: Sparkles },
     { href: "/grievance", label: "Grievance", icon: MessageSquare },
   ]
 
